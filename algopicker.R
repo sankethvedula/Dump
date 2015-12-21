@@ -1,4 +1,4 @@
-data = read.csv("C:\\Users\\SaiSakanki\\Desktop\\TRDDC Stuff\\coding\\Dump.csv")
+data = read.csv("C:\\Users\\735201\\Desktop\\jobrunhistoryderivedtable.csv")
 jobsList = data[,3]
 uniqueJobsList = unique(jobsList)
 predictedOverAll <- NULL
@@ -9,7 +9,7 @@ resError <- NULL
 plot_jobs <- function(currentData)
 {
   ###### This Plots the whole data ##########
-  plotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC Stuff\\coding\\SamplePlots\\"
+  plotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\SamplePlot\\"
   fileName = paste(plotsFolder,uniqueJobsList[i])
   fileName = paste(fileName,".jpg")
   currentData= as.data.frame(currentData)
@@ -37,13 +37,15 @@ fit_lm_plot <- function(trainData)
   {
   	sum = sum + residualErrors[k]*residualErrors[k]
   }
+  sum = sum/length(residualErrors)
   sum = sqrt(sum)
   print("Model Fit Error: ")
   print(sum)
-  resError = rbind(resError,sum)
+  error = sum
+  #resError = rbind(resError,sum)
 
   
-  lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC Stuff\\coding\\FitPlots\\"
+  lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\JobPlots\\"
   lmFileName = paste(lmPlotsFolder,uniqueJobsList[i])
   lmFileName = paste(lmFileName,".jpg")
   jpeg(lmFileName)
@@ -51,7 +53,7 @@ fit_lm_plot <- function(trainData)
   abline(lm(as.numeric(trainData[,2])~trainData[,1],data = as.data.frame(trainData)),col="red")
   dev.off()
 
-  lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC Stuff\\coding\\FitPlots1\\"
+  lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\FitPlot\\"
   lmFileName = paste(lmPlotsFolder,uniqueJobsList[i])
   lmFileName = paste(lmFileName,".jpg")
   jpeg(lmFileName)
@@ -62,8 +64,9 @@ fit_lm_plot <- function(trainData)
 
   
   fit <- lm(as.numeric(currentData[,2])~currentData[,1],data = currentData,na.action = na.exclude)
+  rSquared = summary(fit)$adj.r.squared
   coeff <- coefficients(fit)
-  return(coeff)
+  return(list(coeff,error,rSquared))
 }
 
 divide_data <- function(newArray)
@@ -91,11 +94,13 @@ evaluate_test_data <- function(testData,coeff)
   	{
   		sum = sum + (predictedForAJob[k]-testData[k,2])*(predictedForAJob[k]-testData[k,2])
   	}
+	sum = sum/length(testData[,1])
   	sum = sqrt(sum)
   	predError <- sum
   	print("Prediction Error: ")
   	print(predError)
-	predictedOverAll <- rbind(predictedOverAll,predictedForAJob)
+	return(predError)
+	#predictedOverAll <- rbind(predictedOverAll,predictedForAJob)
 }
 
 
@@ -157,8 +162,19 @@ for( i in 1:length(uniqueJobsList))
   testPlusTrain <- prepare_data_for_lm_plot(currentData)
   trainData <- testPlusTrain[1]
   testData <- testPlusTrain[2]
-  coeff <- fit_lm_plot(trainData)
-  evaluate_test_data(testData,coeff)
+  coeffAndResError <- fit_lm_plot(trainData)
+  x = matrix(unlist(coeffAndResError))
+  coeff <- x[1:2]
+  resError <- x[3]
+  rSquared <- x[4]
+  rSquared <- round(rSquared,12)
+  resError <- round(resError,2)
+  
+  #coeff <- as.data.frame(coeff)
+  #resError <- as.data.frame(resError)
+  predError <- evaluate_test_data(testData,coeff)
+  predError <- round(predError,2)
+  predictedOverAll <- rbind(predictedOverAll,list(uniqueJobsList[i],resError,rSquared,predError))
   #currentData <- prepare_data_for_lm_plot(currentData)
   
   #evaluate_test_data(coeff,testData)
@@ -166,3 +182,6 @@ for( i in 1:length(uniqueJobsList))
   }
 
 }
+
+colnames(predictedOverAll) <- c("Job Name","Model Fit error","R Squared","PredictionError")
+write.csv(predictedOverAll,"C:\\Users\\735201\\Desktop\\Sanketh-Test\\Results11.csv",row.names=FALSE)
