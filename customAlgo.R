@@ -88,7 +88,8 @@ detrend <- function(coeff,trainData)
   slope = coeff[2]
   trainData = as.data.frame(trainData)
   trainData = as.data.frame(trainData)
-  detrendedTrainData = trainData[,2]-trainData[,1]*slope-intercept 
+  detrendedTrainData = trainData[,2]-trainData[,1]*slope
+  detrendedTrainData = cbind(trainData[,1],detrendedTrainData)
   return(detrendedTrainData)
 }
 
@@ -120,9 +121,9 @@ predict_lm <- function(trainData,testData,testvar)
   #fitLM1 <- testvar
   trainData <- as.data.frame(trainData)
   testData <- as.data.frame(testData)
-  x.fitLM <- lm(as.numeric(trainData[,2])~trainData[,1],data = as.data.frame(trainData))
-  p_conf1 <- predict(x.fitLM,interval="confidence")
-  p_pred1 <- predict(x.fitLM,interval="prediction")
+  fitLM <- lm(as.numeric(trainData[,2])~trainData[,1],data = as.data.frame(trainData))
+  p_conf1 <- predict(fitLM,interval="confidence")
+  p_pred1 <- predict(fitLM,interval="prediction")
   new_data <- testData[,1]
   new_data <- as.data.frame(new_data)
   
@@ -163,14 +164,45 @@ convert_to_time_series <- function(detrendedTrainData)
 	return(asTimeSeries)
 }
 
+apply_Arima <- function(detrendedTrainData,testData)
+{
+	data1 = detrendedTrainData[,2]
+	tsdata1 = ts(data1,frequency=10008)
+	ArimaFit = Arima(tsdata1,c(1,0,0))
+	arimaOb <- auto.arima(tsdataHW)
+	fc <- forecast(ArimaFit,h=20)
+	fc <- 
+	plot(fc)
+	
+	
+}
+
+decompose_data <- function(detrendedTrainData)
+{
+	data1 <- detrendedTrainData[,2]
+	tsdata1 <- ts(data1,frequency=10008)
+    dec1 <- decompose(tsdata1)
+	plot(dec1)
+
+}
 
 apply_HoltWinters <- function(detrendedTrainData)
 {
-	asTimeSeries <- convert_to_time_series(as.numeric(unlist(detrendedTrainData)))
-	hwObject = HoltWinters(asTimeSeries,"additive",gamma)	
+	tsdataHW = ts(data1,frequency=10008)
+	hwObject = HoltWinters(tsdataHW)
+    fcObject <- forecast(hwObject,h=100)	
 }
 
-data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\032.csv",sep=",")
+compute_periodogram <- function(detrendedTrainData)
+{
+	temp = spec.pgram(detrendedTrainData[,2],spans=c(19,19))
+	spectralFreq = temp$spec
+	timeFrequency = temp$freq
+	periodogramData <- cbind(spectralFreq,timeFrequency)
+	print(periodogramData)
+}
+
+data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\020.csv",sep=",")
 relevantData = data[,2:3]
 temp = relevantData[,1]
 temp = strptime(temp,format="%m/%d/%Y %H:%M")
@@ -181,12 +213,15 @@ trainPlusTest <- prepare_data(relevantData)
 trainData <- trainPlusTest[1]
 testData <- trainPlusTest[2]
 coeff <- fit_lm_plot(trainData)
+trainData = as.data.frame(trainData)
 vari <- test(trainData)
 predict_lm(trainData,testData,vari[2])
 detrendedTrainData <- detrend(coeff,trainData)
 
-apply_AutoArima(detrendedTrainData)
+compute_periodogram(detrendedTrainData)
 
+apply_AutoArima(detrendedTrainData)
+decompose_data(detrendedTrainData)
 apply_HoltWinters(detrendedTrainData)
 
 
