@@ -1,0 +1,5 @@
+1. Check granularity and damp
+2. Predict for the whole test data
+3. Pick the range of what peak to pick in a periodogram according to granularity
+4. mean,median conflict -> use band 
+5. round off the period values
