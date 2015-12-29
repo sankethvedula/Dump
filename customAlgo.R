@@ -188,7 +188,7 @@ decompose_data <- function(detrendedTrainData)
 
 apply_HoltWinters <- function(detrendedTrainData)
 {
-	tsdataHW = ts(data1,frequency=10008)
+	tsdataHW = ts(data1,frequency=4)
 	hwObject = HoltWinters(tsdataHW)
     fcObject <- forecast(hwObject,h=100)	
 }
@@ -224,7 +224,7 @@ find.freq_AR <- function(x)
 compute_periodogram <- function(detrendedTrainData,testData)
 {
 	testData <- testData
-	print(testData)
+	#print(testData)
 	temp = spec.pgram(detrendedTrainData[,2],spans=c(19,19))
 	spectralFreq = temp$spec
 	timeFrequency = temp$freq
@@ -253,7 +253,7 @@ compute_periodogram <- function(detrendedTrainData,testData)
 
 predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData)
 {
-	testData <- testData
+	testData <- as.data.frame(testData)
 	index = 0
 	for(i in 1: length(top20periods))
 	{
@@ -298,11 +298,11 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData)
 	
 	combined = c(detrendedTrainData[,2],predicted_bin)
 	predictedPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Predicted_plots020\\"
-	lmFileName = paste(predictedPlotsFolder,"Prediction_with_period")
+	lmFileName = paste(predictedPlotsFolder,"Prediction_with_period_2_")
 	lmFileName = paste(lmFileName,top20periods[i])
     lmFileName = paste(lmFileName,".jpg")
 	jpeg(lmFileName)
-	plot(combined,type="l",)
+	plot(testData[,2],type="l",)
 	lines(combined[length(detrendedTrainData[,1]):(length(combined))],type="l",col="red")
 	#lines(combined[length(detrendedTrainData[,1]):length(combined)],type="l",col="red")
 	dev.off()
@@ -315,7 +315,12 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData)
 calculate_errors <- function(predicted_bin,testData)
 {
 	testData <- as.data.frame(testData)
+	if(length(predicted_bin) > length(testData[,2]))
+	{
+		error1 = testData[,2] - predicted_bin[1:(length(testData[,1]))]
+	}else{
 	error1 = testData[1:length(predicted_bin),2] - predicted_bin 
+	}
 	MAPE =0
 	for(k in 1:length(error1))
   {
@@ -388,8 +393,8 @@ predict_next_bin_AR <- function(detrendedTrainData, period)
 
 }
 
-data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\1.csv",sep=",")
-relevantData = data[,2:3]
+data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\2.csv",sep=",")
+relevantData = data[,1:2]
 temp = relevantData[,1]
 temp = strptime(temp,format="%m/%d/%Y %H:%M")
 relevantData[,1] = as.POSIXct(temp)
@@ -412,9 +417,9 @@ period <- find.freq_AR(detrendedTrainData[,2])
 predict_next_bin_AR(detrendedTrainData,period)
 #calculate_peaks(periodogramData)
 
-apply_AutoArima(detrendedTrainData)
-decompose_data(detrendedTrainData)
-apply_HoltWinters(detrendedTrainData)
+#apply_AutoArima(detrendedTrainData)
+#decompose_data(detrendedTrainData)
+#apply_HoltWinters(detrendedTrainData)
 
 
 #print(relevantData)
