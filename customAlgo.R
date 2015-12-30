@@ -221,10 +221,11 @@ find.freq_AR <- function(x)
   return(period)
 }
 
-compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coeff)
+compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coeff,output_directory_path)
 {
 	testData <- testData
 	#print(testData)
+	output_directory_path = output_directory_path
 	slope <- coeff[2]
 	if(damp==1){
 		temp = spec.pgram(detrendedTrainData[,2],spans=c(19,19))
@@ -248,7 +249,7 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
 	#sortedTemp1 <- colnames("Spectral Energy","Inverse Frequency")
 	top20periods <- 1/sortedTemp1[1:20,2]
 	print(top20periods)
-	predicted_bin <- predict_next_bin_detrended(top20periods,detrendedTrainData,testData,granularity,slope)
+	predicted_bin <- predict_next_bin_detrended(top20periods,detrendedTrainData,testData,granularity,slope,output_directory_path)
 	#temp2 = periodogramData[indexStep:(2*indexStep),]
 	#sortedTemp2 = temp2[order(temp2[,1],decreasing=TRUE),]
 	#sortedTemp2 <- colnames("Spectral Energy","Inverse Frequency")
@@ -257,7 +258,7 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
 	return(predicted_bin)
 }
 
-predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,granularity,slope)
+predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,granularity,slope,output_directory_path)
 {
 	testData <- as.data.frame(testData)
 	index = 0
@@ -287,7 +288,7 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,
 	#print(temp) 
     predicted_bin = vector(,current_period)
 	folds = length(detrendedTrainData[,2])/current_period
-	if(folds%%1!=0) # check if folds is an integer
+	if((folds-round(folds))!=0) # check if folds is an integer
 	{
 	folds = as.integer(folds)
 	folds = folds + 2
@@ -329,7 +330,7 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,
 	combined = c(detrendedTrainData[,2],predicted_bin)
 	gen_seq = seq(from = 0, by = (granularity*60), length.out = length(combined))
 	combined = slope*gen_seq + combined
-	predictedPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Predicted_plots020\\"
+	predictedPlotsFolder = output_directory_path
 	lmFileName = paste(predictedPlotsFolder,"Prediction_with_period_2_median")
 	lmFileName = paste(lmFileName,top20periods[i])
     lmFileName = paste(lmFileName,".jpg")
@@ -413,7 +414,7 @@ predict_next_bin_AR <- function(detrendedTrainData, period)
 	}
 	
 	combined = c(detrendedTrainData[,2],predicted_bin)
-	predictedPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Predicted_plots020\\"
+	predictedPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Predicted_plots_1\\"
 	lmFileName = paste(predictedPlotsFolder,"Prediction_with_period_AR")
 	lmFileName = paste(lmFileName,top20periods[i])
     lmFileName = paste(lmFileName,".jpg")
@@ -437,9 +438,13 @@ check_granularity <- function(relevantData)
 	return(list(damp,granularity))
 }
 
-data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\1.csv",sep=",")
+fileNames = list.files(path = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\",pattern=".csv",full.names=TRUE)
+for(file1 in 1:length(fileNames))
+{ 
+print(fileNames[file1])
+data = read.csv(fileNames[file1],sep=",")
 #data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\data_for_sanket\\close_plm_docs _runtime_workload_data.csv",sep=",")
-relevantData = data[,1:2]
+relevantData = data[,2:3]
 #res = data[,4]
 #relevantData = as.vector(relevantData)
 #relevantData = cbind(relevantData,res)
@@ -460,10 +465,15 @@ trainData = as.data.frame(trainData)
 vari <- test(trainData)
 predict_lm(trainData,testData,vari[2])
 detrendedTrainData <- detrend(coeff,trainData)
+output_folder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\"
+subDirectory = paste("Output_",file1,sep="")
+dir.create(file.path(output_folder,subDirectory),showWarnings=FALSE)
+output_directory_path = paste("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\Output_",file1,sep="")
+output_directory_path = paste(output_directory_path,"\\",sep="")
+predicted_bin <- compute_periodogram(detrendedTrainData,testData,damp,granularity,coeff,output_directory_path)
 
-predicted_bin <- compute_periodogram(detrendedTrainData,testData,damp,granularity,coeff)
-
-
+print(paste("Out of file..",file1))
+}
 
 #period <- find.freq_AR(detrendedTrainData[,2])
 #predict_next_bin_AR(detrendedTrainData,period)
