@@ -221,18 +221,24 @@ find.freq_AR <- function(x)
   return(period)
 }
 
-compute_periodogram <- function(detrendedTrainData,testData)
+compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coeff)
 {
 	testData <- testData
 	#print(testData)
-	temp = spec.pgram(detrendedTrainData[,2],spans=c(19,19))
+	slope <- coeff[2]
+	if(damp==1){
+		temp = spec.pgram(detrendedTrainData[,2],spans=c(19,19))
+	}else{
+		temp = spec.pgram(detrendedTrainData[,2])
+	}
+
 	spectralFreq = temp$spec
 	timeFrequency = temp$freq
 	periodogramData <- cbind(spectralFreq,timeFrequency)
 	#print(periodogramData)
 	bandwidth = temp$bandwidth
-	indexStep = as.integer(0.1/bandwidth)
-	if(indexStep > 20){
+	indexStep = as.integer((1/60)/bandwidth)
+	if(granularity < 2){
 	temp1 = periodogramData[1:indexStep,]
 	}else
 	{
@@ -242,7 +248,7 @@ compute_periodogram <- function(detrendedTrainData,testData)
 	#sortedTemp1 <- colnames("Spectral Energy","Inverse Frequency")
 	top20periods <- 1/sortedTemp1[1:20,2]
 	print(top20periods)
-	predicted_bin <- predict_next_bin_detrended(top20periods,detrendedTrainData,testData)
+	predicted_bin <- predict_next_bin_detrended(top20periods,detrendedTrainData,testData,granularity,slope)
 	#temp2 = periodogramData[indexStep:(2*indexStep),]
 	#sortedTemp2 = temp2[order(temp2[,1],decreasing=TRUE),]
 	#sortedTemp2 <- colnames("Spectral Energy","Inverse Frequency")
@@ -251,7 +257,7 @@ compute_periodogram <- function(detrendedTrainData,testData)
 	return(predicted_bin)
 }
 
-predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData)
+predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,granularity,slope)
 {
 	testData <- as.data.frame(testData)
 	index = 0
@@ -278,27 +284,53 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData)
 		endIndex = startIndex + current_period
 		}
 	
-	
+	#print(temp) 
     predicted_bin = vector(,current_period)
 	folds = length(detrendedTrainData[,2])/current_period
+	if(folds%%1!=0) # check if folds is an integer
+	{
 	folds = as.integer(folds)
 	folds = folds + 2
+	}else{
+	folds = folds + 1
+	}
 	for(k in 1: length(temp[,1]))
 	{
 	if(temp[k,folds]==0.000000)
 	{
-		pred_temp = sum(temp[k,])
-		pred_temp = pred_temp/(folds-1)
+		#pred_temp = sum(temp[k,])
+		pred_temp = median(temp[k,],na.rm=TRUE)
+		#pred_temp = pred_temp/(folds-1)
 		predicted_bin[k] = pred_temp
 	}
-	pred_temp = sum(temp[k,])
-	pred_temp = pred_temp/folds
+	#pred_temp = sum(temp[k,])
+	pred_temp = median(temp[k,],na.rm=TRUE)
+	#pred_temp = pred_temp/folds
 	predicted_bin[k] = pred_temp
 	}
+	testData <- as.data.frame(testData)
+	if(length(predicted_bin)<length(testData[,2]))
+	{
+		temp_list <- 0
+		repeat{
+		if(length(temp_list) > length(testData[,2]))
+		{
+			break
+		}
+		temp_list <- c(temp_list,predicted_bin)
+		}
+		#print(head(temp_list))
+	}else{
+		temp_list = predicted_bin
+	}
+	
+	predicted_bin = temp_list[1:length(testData[,1])]
 	
 	combined = c(detrendedTrainData[,2],predicted_bin)
+	gen_seq = seq(from = 0, by = (granularity*60), length.out = length(combined))
+	combined = slope*gen_seq + combined
 	predictedPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Predicted_plots020\\"
-	lmFileName = paste(predictedPlotsFolder,"Prediction_with_period_2_")
+	lmFileName = paste(predictedPlotsFolder,"Prediction_with_period_2_median")
 	lmFileName = paste(lmFileName,top20periods[i])
     lmFileName = paste(lmFileName,".jpg")
 	jpeg(lmFileName)
@@ -393,11 +425,31 @@ predict_next_bin_AR <- function(detrendedTrainData, period)
 
 }
 
-data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\2.csv",sep=",")
+check_granularity <- function(relevantData)
+{
+	granularity <- difftime(relevantData[2,1],relevantData[1,1],units="mins")
+	print(granularity)
+	if(granularity > 720){
+		damp = FALSE
+	}else{
+	damp = TRUE
+	}
+	return(list(damp,granularity))
+}
+
+data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\1.csv",sep=",")
+#data = read.csv("C:\\Users\\735201\\Desktop\\Sanketh-Test\\data_for_sanket\\close_plm_docs _runtime_workload_data.csv",sep=",")
 relevantData = data[,1:2]
+#res = data[,4]
+#relevantData = as.vector(relevantData)
+#relevantData = cbind(relevantData,res)
 temp = relevantData[,1]
 temp = strptime(temp,format="%m/%d/%Y %H:%M")
 relevantData[,1] = as.POSIXct(temp)
+tempList <- check_granularity(relevantData)
+tempList <- unlist(tempList)
+granularity <- tempList[2]
+damp <- tempList[1]
 colnames(relevantData) <- c("Time Stamp","CPU Util")
 plot_data(relevantData) 
 trainPlusTest <- prepare_data(relevantData)
@@ -409,12 +461,12 @@ vari <- test(trainData)
 predict_lm(trainData,testData,vari[2])
 detrendedTrainData <- detrend(coeff,trainData)
 
-predicted_bin <- compute_periodogram(detrendedTrainData,testData)
+predicted_bin <- compute_periodogram(detrendedTrainData,testData,damp,granularity,coeff)
 
 
 
-period <- find.freq_AR(detrendedTrainData[,2])
-predict_next_bin_AR(detrendedTrainData,period)
+#period <- find.freq_AR(detrendedTrainData[,2])
+#predict_next_bin_AR(detrendedTrainData,period)
 #calculate_peaks(periodogramData)
 
 #apply_AutoArima(detrendedTrainData)
