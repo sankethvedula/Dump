@@ -1,2 +1,3 @@
 1. predict a band of values while predicting each value using period (median + std. deviation)
 2. Take 5 values from a period and predict using 5 values a bin -> use median of 5 values in each bin 
+3. The predicted values seem to shift from the original a bit..Hence the error is increasing...check if there's a fix..Try with a synthetic data set  may be?
