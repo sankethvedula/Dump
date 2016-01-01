@@ -1,3 +1,11 @@
 1. Clean up the code.
 2. Alternatives for median...find the distribution of the data which is used to predict a particular point and if it is a multi modal distribution -> pick mean, else median.
 3. try aggregating the values according to granularity.
+4. Round the values for all the periods.
+
+
+Limitations of the code:
+1. Works only if it is 20 periods..the errors..
+2. The case in which there is a floating point exception. (like the one found in code) -> currently being handled manually 
+^ Rounding the periods would do.
+3. The data should be in 2 and 3rd columns of a .csv file.
