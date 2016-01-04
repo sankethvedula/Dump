@@ -1,7 +1,7 @@
 1. Clean up the code.
-2. Alternatives for median...find the distribution of the data which is used to predict a particular point and if it is a multi modal distribution -> pick mean, else median.
-3. try aggregating the values according to granularity.
-4. Round the values for all the periods.
+2. pick the one with least error and plot only one graph..
+3. Check if there is any error with HoltWinters -> giving weird plots!
+4. Remove outliers..It might be its effecting the whole plot.
 
 
 Limitations of the code:
