@@ -1,7 +1,9 @@
-1. Clean up the code.
+1. Clean up the code and mak it standard.
 2. pick the one with least error and plot only one graph..
 3. Check if there is any error with HoltWinters -> giving weird plots!
 4. Remove outliers..It might be its effecting the whole plot.
+5. Algo of algo wrapper -> to be built. 
+6. Check if HoltWinters is wrongly applied or something..If the trend is properly set or not.
 
 
 Limitations of the code:
