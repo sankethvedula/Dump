@@ -165,22 +165,38 @@ calculate_errors_arima <- function(temp_pred_arima,testData)
 	testData = as.data.frame(testData)
 	error1 = as.numeric(temp_pred_arima) - testData[,2]
 	error1 = unlist(error1)
-	MAPE =0
+	MdAPE = 0
+	list_MdAPE <- NULL	
 	for(k in 1:length(error1))
-  {
-  error1[k] = as.numeric(error1[k])
-  if(testData[k,2] != 0)
-  {
-  MAPE = MAPE + (abs(error1[k])/testData[k,2])   
-  }
-  else 
-  {
-  MAPE = MAPE + abs(error1[k])
-  }
-  }
-  MAPE = MAPE/length(error1)
-  MAPE = as.numeric(MAPE)
-  return(MAPE)
+	{
+		if(testData[k,2] != 0)
+		{
+			temp_err <- (abs(error1[k])/abs(testData[k,2]))
+			list_MdAPE <- c(list_MdAPE,temp_err)
+		}else{
+		temp_err <-  abs(error1[k])
+		list_MdAPE <- c(list_MdAPE,temp_err)		
+		}
+	}
+	list_MdAPE <- remove_outliers_errors(list_MdAPE)
+	MdAPE <- mean(list_MdAPE)
+	
+	# MAPE =0
+	# for(k in 1:length(error1))
+  # {
+  # error1[k] = as.numeric(error1[k])
+  # if(testData[k,2] != 0)
+  # {
+  # MAPE = MAPE + (abs(error1[k])/abs(testData[k,2]))   
+  # }
+  # else 
+  # {
+  # MAPE = MAPE + abs(error1[k])
+  # }
+  # }
+  # MAPE = MAPE/length(error1)
+   MdAPE = as.numeric(MdAPE)
+  return(MdAPE)
 }
 
 predict_lm <- function(trainData,testData,testvar)
@@ -302,21 +318,38 @@ calculate_errors_hw <- function(temp_pred_hw,testData)
 	testData = as.data.frame(testData)
 	error1 = as.numeric(temp_pred_hw) - testData[,2]
 	error1 = unlist(error1)
-	MAPE =0
+	MdAPE = 0
+	list_MdAPE <- NULL	
 	for(k in 1:length(error1))
-  {
-  error1[k] = as.numeric(error1[k])
-  if(testData[k,2] != 0)
-  {
-  MAPE = MAPE + (abs(error1[k])/testData[k,2])   
-  }else 
-  {
-  MAPE = MAPE + abs(error1[k])
-  }
-  }
-  MAPE = MAPE/length(error1)
-  MAPE = as.numeric(MAPE)
-  return(MAPE)
+	{
+		if(testData[k,2] != 0)
+		{
+			temp_err <- (abs(error1[k])/abs(testData[k,2]))
+			list_MdAPE <- c(list_MdAPE,temp_err)
+		}else{
+		temp_err <-  abs(error1[k]/temp_err)
+		list_MdAPE <- c(list_MdAPE)		
+		}
+	}
+	
+	list_MdAPE <- remove_outliers_errors(list_MdAPE)
+	MdAPE <- mean(list_MdAPE)	
+	
+	# MAPE =0
+	# for(k in 1:length(error1))
+  # {
+  # error1[k] = as.numeric(error1[k])
+  # if(testData[k,2] != 0)
+  # {
+  # MAPE = MAPE + (abs(error1[k])/abs(testData[k,2]))   
+  # }else 
+  # {
+  # MAPE = MAPE + abs(error1[k])
+  # }
+  # }
+  # MAPE = MAPE/length(error1)
+  MdAPE = as.numeric(MdAPE)
+  return(MdAPE)
 }
 
 
@@ -548,25 +581,46 @@ calculate_errors <- function(predicted_bin,testData)
 	}else{
 	error1 = testData[1:length(predicted_bin),2] - predicted_bin 
 	}
-	MAPE =0
+	#---------- MdAPE-------------
+	MdAPE = 0
+	list_MdAPE <- NULL	
 	for(k in 1:length(error1))
-  {
-  if(testData[k,2] != 0)
-  {
-  MAPE = MAPE + (abs(error1[k])/testData[k,2])   
-  }
-  else 
-  {
-  MAPE = MAPE + abs(error1[k])
-  }
-  }
-  MAPE = MAPE/length(error1)
+	{
+		if(testData[k,2] != 0)
+		{
+			temp_err <- (abs(error1[k])/abs(testData[k,2]))
+			list_MdAPE <- c(list_MdAPE,temp_err)
+		}else{
+		temp_err <-  abs(error1[k])
+		list_MdAPE <- c(list_MdAPE,temp_err)		
+		}
+	}
+	list_MdAPE <- remove_outliers_errors(list_MdAPE)
+	print("Successful")
+	MdAPE <- mean(list_MdAPE)
+	
+	
+	
+	#------------MAPE--------------
+	#MAPE =0
+	#for(k in 1:length(error1))
+  #{
+  #if(testData[k,2] != 0)
+  #{
+  #MAPE = MAPE + (abs(error1[k])/abs(testData[k,2]))   
+  #}
+  #else 
+  #{
+  #MAPE = MAPE + abs(error1[k])
+  #}
+  #}
+  #MAPE = MAPE/length(error1)
   #error_matrix <- matrix(data = 0,nrow = 20)
   #temp_vec = c(temp_vec,MAPE)
   #print(MAPE)
-  print(MAPE)
+  print(MdAPE)
   #print(error_matrix)
-  return(MAPE)
+  return(MdAPE)
  
 }
 
@@ -636,6 +690,71 @@ check_granularity <- function(relevantData)
 	return(list(damp,granularity))
 }
 
+remove_outliers_errors <- function(list_values)
+{
+	relevantData <- list_values
+	mean_whole_data = mean(relevantData)
+	std_whole_data = sd(relevantData)	
+	lower_threshold_for_outliers = mean_whole_data - 3*std_whole_data
+	#print(lower_threshold_for_outliers)
+	upper_threshold_for_outliers = mean_whole_data + 3*std_whole_data
+	#print(upper_threshold_for_outliers)
+	size_data = length(relevantData)
+	temp_relevant <- NULL
+	
+	for(index1 in 1:size_data){
+		#print(index1)
+		if(index1 > size_data){
+		next
+		}
+		if(relevantData[index1] < lower_threshold_for_outliers || relevantData[index1] > upper_threshold_for_outliers)
+			{
+				#print("outlier removed")
+				#print(index1)
+				temp_relevant <- c(temp_relevant,index1)
+			}
+	}
+	if(!is.null(temp_relevant)){
+		relevantData <- relevantData[-temp_relevant]
+	}
+	return(relevantData)
+	}
+
+
+}
+
+remove_outliers <- function(relevantData)
+{
+	if(length(relevantData) > 1)
+	{
+	mean_whole_data = mean(relevantData[,2])
+	std_whole_data = sd(relevantData[,2])
+	
+	lower_threshold_for_outliers = mean_whole_data - 3*std_whole_data
+	upper_threshold_for_outliers = mean_whole_data + 3*std_whole_data
+	
+	size_data = length(relevantData[,2])
+	temp_relevant <- NULL
+	for(index1 in 1:size_data){
+		#print(index1)
+		if(index1 > size_data){
+		next
+		}
+		if(relevantData[index1,2] < lower_threshold_for_outliers || relevantData[index1,2] > upper_threshold_for_outliers)
+			{
+				print("outlier removed")
+				#print(index1)
+				temp_relevant <- c(temp_relevant,index1)
+			}
+	}
+	if(!is.null(temp_relevant)){
+		relevantData <- relevantData[-temp_relevant,]
+	}
+	}
+	return(relevantData)
+}
+
+
 fileNames = list.files(path = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\",pattern=".csv",full.names=TRUE)
 temp_vec <- NULL
 col_names <- NULL
@@ -646,6 +765,7 @@ for(file1 in 1:length(fileNames))
 	data = read.csv(fileNames[file1],sep=",")
 	relevantData = data[,2:3]
 	temp = relevantData[,1]
+	
 	# ----convert data into required format----
 	temp = strptime(temp,format=CONST_DATE_FORMAT)
 	relevantData[,1] = as.POSIXct(temp)
@@ -657,6 +777,9 @@ for(file1 in 1:length(fileNames))
 	colnames(relevantData) <- c("Time Stamp","CPU Util")
 	#---- plot data -----
 	plot_data(relevantData)
+	#------ remove outliers from data -----------
+	relevantData <- remove_outliers(relevantData)
+	
 	#----- Divide data into train and test	-------
 	trainPlusTest <- prepare_data(relevantData)
 	trainData <- trainPlusTest[1]
@@ -679,13 +802,69 @@ for(file1 in 1:length(fileNames))
 	error_list <- bestErrorIndexAnderror_list[2]
 	error_list <- as.data.frame(error_list)
 	testData <- as.data.frame(testData)
+	error_list = error_list$V1
+	min_custom_index <- which(error_list == min(error_list))
+	print(min_custom_index)
+	if(length(min_custom_index)>1)
+	{
+			min_custom_value = error_list[min_custom_index[1]]
+	}else{
+		min_custom_value <- error_list[min_custom_index]
+	}
+	print(min_custom_value)
 	#-------- Apply Auto Arima with top 5 periods retrieved from the periodogram approach, returns 
 	# -error list for each period ------
 	error_list_arima <- apply_AutoArima(detrendedTrainData,best5errors,testData,output_directory_path,file1)
 	# ------- Apply HoltWinters with top 5 periods retireved from periodogram approach, returns li
 	#-st of errors----------
+	min_arima_index = which(error_list_arima == min(error_list_arima))
+	if(length(min_arima_index) > 1)
+	{
+			min_arima_value <- error_list_arima[min_arima_index[1]]
+	}else{
+		min_arima_value <- error_list_arima[min_arima_index]
+
+	}
+
+	
+	if(min_custom_value < min_arima_value)
+	{
+		min_whole = min_custom_value
+	}else{
+	min_whole = min_arima_value
+	}
+	
 	error_hw <- apply_HoltWinters(detrendedTrainData,best5errors,testData,output_directory_path,file1)
-   error_list_arima <- as.data.frame(error_list_arima)
+   min_hw_index <- which(error_hw == min(error_hw))
+	if(min_hw_index >1)
+	{
+		min_hw_value = error_hw[min_hw_index[1]]
+	}else{
+		min_hw_value <- error_hw[min_hw_index]
+	}
+	
+
+	if(min_whole < min_hw_value)
+	{
+		min_whole = min_whole
+	}else{
+	min_whole = min_hw_value
+	}
+	
+	print(min_whole)
+	if(min_whole == min_arima_value)
+	{
+		print(paste("Arima is best",min_arima_index,"Period of ",best5errors[min_hw_index,1]))
+	}else{
+		if(min_whole== min_hw_value){
+			print(paste("Holt Winters is best",min_hw_index,"Period of ",best5errors[min_hw_index,1]))
+		}else{
+			if(min_custom_value == min_whole){
+				print(paste("Custom algo does best",min_custom_index,"period of",best5errors[min_custom_index,1]))
+			}
+		}
+	}
+	error_list_arima <- as.data.frame(error_list_arima)
 	error_list <- c(error_list,error_list_arima)
 	error_hw <- as.data.frame(error_hw)
 	error_list <- c(error_list,error_hw)
