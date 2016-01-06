@@ -1,4 +1,4 @@
-CONST_DATE_FORMAT = "%m/%d/%Y %H:%M"
+CONST_DATE_FORMAT = "%d/%m/%Y %H:%M"
 
 prepare_data <-function(currentData)
 {
@@ -139,6 +139,7 @@ final_AutoArima <- function(min_arima_index,trainData,testData,best5errors,file1
 	lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Output_final\\"
 	lmFileName = paste(lmPlotsFolder,file1)
 	lmFileName = paste(lmFileName,".jpg")
+	totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
 
 	jpeg(lmFileName)
 	plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
@@ -226,7 +227,7 @@ calculate_errors_arima <- function(temp_pred_arima,testData)
     }
   }
   list_MdAPE <- remove_outliers_errors(list_MdAPE)
-  MdAPE <- mean(list_MdAPE)
+  MdAPE <- median(list_MdAPE)
   
   # MAPE =0
   # for(k in 1:length(error1))
@@ -311,6 +312,7 @@ final_HoltWinters  <- function(min_hw_index,trainData,testData,best5errors,file1
 {
 	detrendedTrainData = trainData
 	best_period = best5errors[min_hw_index,1]
+	print(min_hw_index)
 	testData = as.data.frame(testData)
     tsdataHW = ts(data1,frequency=best_period)
     hwObject = HoltWinters(tsdataHW)
@@ -379,13 +381,13 @@ apply_HoltWinters <- function(detrendedTrainData,best5errors,testData,output_dir
     #lines(pred_hw_lower,col=3,lty=2)
     #lines(pred_hw_upper,col=3,lty=2)
     dev.off()
+	error <- calculate_errors_hw(pred_hw,testData)
+	print(paste("HoltWinters",err,"period",error))
+	error_hw_list <- c(error_hw_list,error)
   }
-  if(pred_hw == 123){
-   next
-  }
-  error <- calculate_errors_hw(pred_hw,testData)
-  print(paste("HoltWinters",err,"period",error))
-  error_hw_list <- c(error_hw_list,error)
+ if(is.na(error)){
+ error_hw_list <- c(error_hw_list,error)
+ }
   }
  return(error_hw_list)  
 }
@@ -413,7 +415,7 @@ calculate_errors_hw <- function(temp_pred_hw,testData)
   }
   
   list_MdAPE <- remove_outliers_errors(list_MdAPE)
-  MdAPE <- mean(list_MdAPE) 
+  MdAPE <- median(list_MdAPE) 
   
   # MAPE =0
   # for(k in 1:length(error1))
@@ -484,6 +486,18 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
 	{
 	temp1 = periodogramData
 	}
+	
+	temp_freq_list <- NULL
+	for(temp_freq_index in 1:length(periodogramData[,1]))
+	{
+		if(periodogramData[temp_freq_index,2] > 0.40)
+		{
+			temp_freq_list <- c(temp_freq_list,temp_freq_index)
+		}
+	
+	}
+	temp1 <- temp1[-temp_freq_list,]
+	
 	sortedTemp1 = temp1[order(temp1[,1],decreasing=TRUE),]
   #sortedTemp1 <- colnames("Spectral Energy","Inverse Frequency")
 	top20periods <- 1/sortedTemp1[1:20,2]
@@ -494,7 +508,7 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
 	}
 	
 	testData <- as.data.frame(testData)
-	 current_period = top20periods[i]
+	 current_period = top20periods[min_custom_index]
     temp = matrix(data = 0,nrow=current_period,ncol=1)
 
     startIndex = 0
@@ -628,6 +642,18 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
   {
   temp1 = periodogramData
   }
+  
+  	temp_freq_list <- NULL
+	for(temp_freq_index in 1:length(periodogramData[,1]))
+	{
+		if(periodogramData[temp_freq_index,2] > 0.40)
+		{
+			temp_freq_list <- c(temp_freq_list,temp_freq_index)
+		}
+	
+	}
+	temp1 <- temp1[-temp_freq_list,]
+	
   sortedTemp1 = temp1[order(temp1[,1],decreasing=TRUE),]
   #sortedTemp1 <- colnames("Spectral Energy","Inverse Frequency")
   top20periods <- 1/sortedTemp1[1:20,2]
@@ -814,7 +840,7 @@ calculate_errors <- function(predicted_bin,testData)
   }
   list_MdAPE <- remove_outliers_errors(list_MdAPE)
   print("Successful")
-  MdAPE <- mean(list_MdAPE)
+  MdAPE <- median(list_MdAPE)
   
   
   
@@ -974,6 +1000,13 @@ remove_outliers <- function(relevantData)
   return(relevantData)
 }
 
+manage_holes <- function(relevantData)
+{
+
+
+}
+
+
 
 fileNames = list.files(path = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\",pattern=".csv",full.names=TRUE)
 temp_vec <- NULL
@@ -1055,7 +1088,7 @@ for(file1 in 1:length(fileNames))
 	  }
 	  
 	  error_hw <- apply_HoltWinters(trainData,best5errors,testData,output_directory_path,file1)
-	   min_hw_index <- which(error_hw == min(error_hw))
+	   min_hw_index <- which(error_hw == min(error_hw,na.rm=TRUE))
 	  if(min_hw_index >1)
 	  {
 		min_hw_value = error_hw[min_hw_index[1]]
@@ -1092,7 +1125,7 @@ for(file1 in 1:length(fileNames))
 	  error_hw <- as.data.frame(error_hw)
 	  error_list <- c(error_list,error_hw)
 	  temp = c(error_list$V1,error_list$error_list_arima,error_list$error_hw)
-	  temp_vec <- cbind(temp_vec,temp) 
+	  temp_vec <- cbind(temp_vec,temp)
 	  print(paste("Out of file..",file1))
 	  col_names <- c(col_names,file1)
 
