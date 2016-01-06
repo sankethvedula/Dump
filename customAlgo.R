@@ -40,6 +40,7 @@ calculate_errors_1 <- function(residualErrors,trainData)
   {
     RMSE = RMSE + residualErrors[k]*residualErrors[k]
   }
+  
   RMSE = RMSE/length(residualErrors)
   RMSE = sqrt(RMSE)
   print(paste("RMSE  = ",RMSE))
