@@ -40,7 +40,6 @@ calculate_errors_1 <- function(residualErrors,trainData)
   {
     RMSE = RMSE + residualErrors[k]*residualErrors[k]
   }
-  
   RMSE = RMSE/length(residualErrors)
   RMSE = sqrt(RMSE)
   print(paste("RMSE  = ",RMSE))
@@ -1003,9 +1002,22 @@ remove_outliers <- function(relevantData)
 
 manage_holes <- function(relevantData)
 {
+	start_time = relevantData[1,1]
+	end_time = relevantData[length(relevantData),1]
+	time_diff_list <- NULL
+	for(time_ind in 1:(length(relevantData[,2])-1))
+	{
+		time_diff_value = difftime(relevantData[time_ind+1,1],relevantData[time_ind,1],units="mins")
+		time_diff_list <- c(time_diff_list,time_diff_value)
+	}
+	print(time_diff_list)
+	date_data = relevantData[,1]
+	date_data = as.Date(date_data)
+	temp_relevantData <- date_data
+	temp_relevantData <- cbind(temp_relevantData,relevantData[,2])
+	
+	}
 
-
-}
 
 
 
@@ -1031,6 +1043,8 @@ for(file1 in 1:length(fileNames))
 	  colnames(relevantData) <- c("Time Stamp","CPU Util")
 	  #---- plot data -----
 	  plot_data(relevantData)
+	  #------manage holes----
+	  relevantData <- manage_holes(relevantData)
 	  #------ remove outliers from data -----------
 	  relevantData <- remove_outliers(relevantData)
 	  
