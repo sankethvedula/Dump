@@ -104,6 +104,51 @@ plot(relevantData[,1],relevantData[,2],type="l",xlab=colnames(relevantData)[1],y
 
 }
 
+final_AutoArima <- function(min_arima_index,trainData,testData,best5errors,file1)
+{
+	detrendedTrainData <- trainData
+	if(length(min_arima_index) > 1)
+	{
+		min_arima_index = min_arima_index[1]
+	}
+	best_period <- best5errors[min_arima_index,1]
+	data1 = detrendedTrainData[,2]
+	tsdata1 = ts(data1,frequency=best_period)
+	library(forecast)
+	fit_auto_arima <- auto.arima(tsdata1)
+	testData = as.data.frame(testData)
+	len = length(testData[,2])
+	fc <- try(predict(fit_auto_arima,n.ahead=len), silent = TRUE)
+	if (inherits(fc, 'try-error'))
+	{
+		message_string = paste('Error in predicting')
+		print (message_string)
+		error_list_arima <- c(error_list_arima,"NA")
+		next
+	}
+	temp_pred_arima = fc$pred
+	temp_pred_arima = as.data.frame(temp_pred_arima)
+	temp_sd = fc$se
+	temp_sd = as.data.frame(temp_sd)
+	temp_low = temp_pred_arima - temp_sd
+	temp_high = temp_pred_arima + temp_sd
+	temp_low = as.numeric(temp_low$x)
+	temp_high = as.numeric(temp_high$x)
+	temp_pred_arima = as.numeric(temp_pred_arima$x)
+	
+	lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Output_final\\"
+	lmFileName = paste(lmPlotsFolder,file1)
+	lmFileName = paste(lmFileName,".jpg")
+
+	jpeg(lmFileName)
+	plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
+	lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
+	lines((length(detrendedTrainData[,2])+1):totalLength,temp_pred_arima,type="l",col="red",lty=1)
+	lines((length(detrendedTrainData[,2])+1):totalLength,temp_low,type="l",col=5,lty=3)
+	lines((length(detrendedTrainData[,2])+1):totalLength,temp_high,type="l",col=6,lty=3)  
+	dev.off()
+}
+
 apply_AutoArima <- function(detrendedTrainData,best5errors,testData,output_directory_path,file1)
 {
   error_list_arima <- NULL
@@ -262,6 +307,39 @@ decompose_data <- function(detrendedTrainData)
 
 }
 
+final_HoltWinters  <- function(min_hw_index,trainData,testData,best5errors,file1)
+{
+	detrendedTrainData = trainData
+	best_period = best5errors[min_hw_index,1]
+	testData = as.data.frame(testData)
+    tsdataHW = ts(data1,frequency=best_period)
+    hwObject = HoltWinters(tsdataHW)
+    fcObject <- forecast(hwObject,h=length(testData[,2]),level=c(80,95))
+    pred_hw <- fcObject$mean
+    pred_hw_upper_80 <- fcObject$upper[,1]
+    pred_hw_upper_95 <- fcObject$upper[,2]
+    pred_hw_lower_80 <- fcObject$lower[,1]
+    pred_hw_lower_95 <- fcObject$lower[,2]
+    pred_hw = as.numeric(pred_hw)
+    pred_hw_lower = as.numeric(fcObject$lower)
+    pred_hw_upper = as.numeric(fcObject$upper)
+	
+	lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Output_final\\"
+	lmFileName = paste(lmPlotsFolder,file1)
+	lmFileName = paste(lmFileName,".jpg")
+	totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
+
+	jpeg(lmFileName)
+    plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
+    lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
+    lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw,type="l",col="red",lty=1)
+    lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_lower_80,type="l",col=5,lty=3)
+    lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_upper_80,type="l",col=6,lty=3)  
+	dev.off()
+	return(TRUE)
+}
+
+
 apply_HoltWinters <- function(detrendedTrainData,best5errors,testData,output_directory_path,file1)
 {
   error_hw_list <- NULL
@@ -383,6 +461,148 @@ find.freq_AR <- function(x)
   return(period)
 }
 
+final_compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coeff,min_custom_index,file1)
+{
+	file1 <- file1
+	testData <- testData
+	slope <- coeff[2]
+	if(damp==1){
+		temp = spec.pgram(detrendedTrainData[,2],spans=c(19,19))
+	}else{
+    temp = spec.pgram(detrendedTrainData[,2])
+	}
+
+	spectralFreq = temp$spec
+	timeFrequency = temp$freq
+	periodogramData <- cbind(spectralFreq,timeFrequency)
+	#print(periodogramData)
+	bandwidth = temp$bandwidth
+	indexStep = as.integer((1/60)/bandwidth)
+	if(granularity < 2){
+	temp1 = periodogramData[1:indexStep,]
+	}else
+	{
+	temp1 = periodogramData
+	}
+	sortedTemp1 = temp1[order(temp1[,1],decreasing=TRUE),]
+  #sortedTemp1 <- colnames("Spectral Energy","Inverse Frequency")
+	top20periods <- 1/sortedTemp1[1:20,2]
+	
+	if(length(min_custom_index) > 1)
+	{
+		min_custom_index = min_custom_index[1]
+	}
+	
+	testData <- as.data.frame(testData)
+	 current_period = top20periods[i]
+    temp = matrix(data = 0,nrow=current_period,ncol=1)
+
+    startIndex = 0
+    endIndex = current_period
+    repeat{
+    if(endIndex > length(detrendedTrainData[,2]))
+    {
+      temp1 = detrendedTrainData[startIndex:length(detrendedTrainData[,2]),2]
+      length1 = endIndex-length(detrendedTrainData[,2])
+      zero_temp = vector(,length1)
+      temp1 = c(temp1,zero_temp)
+      temp = cbind(temp,temp1)
+      break
+    }
+    #print(detrendedTrainData[startIndex:endIndex,2])
+    temp = cbind(temp,detrendedTrainData[startIndex:endIndex,2])
+    startIndex = startIndex + current_period
+    endIndex = startIndex + current_period
+    }
+	
+	current_period = top20periods[min_custom_index]
+	 predicted_bin = vector(,current_period)
+  std_bin = vector(,current_period)
+  folds = length(detrendedTrainData[,2])/current_period
+  if((folds-round(folds))!=0) # check if folds is an integer
+  {
+  folds = as.integer(folds)
+  folds = folds + 2
+  }else{
+  folds = folds + 1
+  }
+  for(k in 1: length(temp[,1]))
+  {
+  if(temp[k,folds]==0.000000)
+  {
+    #pred_temp = sum(temp[k,])
+    #pred_temp = median(temp[k,],na.rm=TRUE)
+    var1 = quantile(temp[k,], probs = c(0, 0.25, 0.5, 0.75, 1)) # quartile
+      pred_temp = as.numeric(var1[3])
+    #pred_temp = pred_temp/(folds-1)
+    predicted_bin[k] = pred_temp
+  }
+  #pred_temp = sum(temp[k,])
+  #pred_temp = median(temp[k,],na.rm=TRUE)
+  var1 = quantile(temp[k,], probs = c(0, 0.25, 0.5, 0.75, 1)) # quartile
+  pred_temp = as.numeric(var1[3])
+  #pred_temp = pred_temp/folds
+  predicted_bin[k] = pred_temp
+  std_temp = sd(temp[k,],na.rm=TRUE)
+  std_bin[k] = std_temp
+  }
+  lower_band = predicted_bin-std_bin 
+  upper_band = predicted_bin + std_bin
+  
+  
+  testData <- as.data.frame(testData)
+  if(length(predicted_bin)<length(testData[,2]))
+  {
+    temp_list <- NULL
+    temp_lower <- NULL
+    temp_higher <- NULL
+    repeat{
+    if(length(temp_list) >= length(testData[,2]))
+    {
+      break
+    }
+    temp_list <- c(temp_list,predicted_bin)
+    temp_lower <- c(temp_lower,lower_band)
+    temp_higher <- c(temp_higher,upper_band)
+    }
+    #print(head(temp_list))
+  }else{
+    temp_list = predicted_bin
+    temp_higher = upper_band
+    temp_lower = lower_band
+  }
+  #print(temp_list)
+  
+  predicted_bin = temp_list[1:length(testData[,1])]
+  upper_band = temp_higher[1:length(testData[,1])]
+  lower_band = temp_lower[1:length(testData[,1])]
+  
+  combined = c(detrendedTrainData[,2],predicted_bin)
+  combined_lower = c(detrendedTrainData[,2],upper_band)
+  combined_higher = c(detrendedTrainData[,2],lower_band)
+  
+  gen_seq = seq(from = 0, by = (granularity*60), length.out = length(combined))
+  combined = slope*gen_seq + combined
+  combined_lower = slope*gen_seq + combined_lower
+  combined_higher = slope*gen_seq + combined_higher
+
+	lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Output_final\\"
+	lmFileName = paste(lmPlotsFolder,file1)
+	lmFileName = paste(lmFileName,".jpg")
+	
+	totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
+	
+	
+  jpeg(lmFileName)
+  plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
+  lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
+  lines((length(detrendedTrainData[,2])+1):totalLength,combined[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col="red",lty=1)
+  lines((length(detrendedTrainData[,2])+1):totalLength,combined_lower[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col=5,lty=3)
+  lines((length(detrendedTrainData[,2])+1):totalLength,combined_higher[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col=6,lty=3)
+	dev.off()
+}
+
+
 compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coeff,output_directory_path,file1)
 {
     file1 <- file1
@@ -438,12 +658,7 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
   errors_and_periods <- cbind(top20periods,error_list)
   errors_and_periods  <- errors_and_periods[order(errors_and_periods[,2]),]
   best5errors <- errors_and_periods[1:5,]
-  #print(top20periods[best_period_index])
-  #temp2 = periodogramData[indexStep:(2*indexStep),]
-  #sortedTemp2 = temp2[order(temp2[,1],decreasing=TRUE),]
-  #sortedTemp2 <- colnames("Spectral Energy","Inverse Frequency")
-  #top20periods <- 1/sortedTemp1[1:20,2]
-  #predict_next_bin_detrended(top20periods,detrendedTrainData)
+  
   error_list <- as.data.frame(error_list)
   return(list(best5errors,error_list))
 }
@@ -765,118 +980,121 @@ temp_vec <- NULL
 col_names <- NULL
 for(file1 in 1:length(fileNames))
 { 
-  print(fileNames[file1])
-  # ----reads data from csv----
-  data = read.csv(fileNames[file1],sep=",")
-  relevantData = data[,2:3]
-  temp = relevantData[,1]
-  
-  # ----convert data into required format----
-  temp = strptime(temp,format=CONST_DATE_FORMAT)
-  relevantData[,1] = as.POSIXct(temp)
-  # ----Check Granularity of data-------
-  tempList <- check_granularity(relevantData)
-  tempList <- unlist(tempList)
-  granularity <- tempList[2]
-  damp <- tempList[1]
-  colnames(relevantData) <- c("Time Stamp","CPU Util")
-  #---- plot data -----
-  plot_data(relevantData)
-  #------ remove outliers from data -----------
-  relevantData <- remove_outliers(relevantData)
-  
-  #----- Divide data into train and test  -------
-  trainPlusTest <- prepare_data(relevantData)
-  trainData <- trainPlusTest[1]
-  testData <- trainPlusTest[2]
-  # ------ fit LM and return the coefficients ---
-  coeff <- fit_lm_plot(trainData)
-  trainData = as.data.frame(trainData)
-  # ------ Detrend the data --------
-  detrendedTrainData <- detrend(coeff,trainData)
-  #------------ Set output Directory path ----------
-  output_folder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\"
-  subDirectory = paste("Output_",file1,sep="")
-  dir.create(file.path(output_folder,subDirectory),showWarnings=FALSE)
-  output_directory_path = paste("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\Output_",file1,sep="")
-  output_directory_path = paste(output_directory_path,"\\",sep="")
-  # --------- The periodogram approach, returns errors of this approach and the best 5 periods --------
-  bestErrorIndexAnderror_list <- compute_periodogram(detrendedTrainData,testData,damp,granularity,coeff,output_directory_path,file1)
-  best5errors <- bestErrorIndexAnderror_list[1]
-  best5errors <- as.data.frame(best5errors)
-  error_list <- bestErrorIndexAnderror_list[2]
-  error_list <- as.data.frame(error_list)
-  testData <- as.data.frame(testData)
-  error_list = error_list$V1
-  min_custom_index <- which(error_list == min(error_list))
-  print(min_custom_index)
-  if(length(min_custom_index)>1)
-  {
-      min_custom_value = error_list[min_custom_index[1]]
-  }else{
-    min_custom_value <- error_list[min_custom_index]
-  }
-  print(min_custom_value)
-  #-------- Apply Auto Arima with top 5 periods retrieved from the periodogram approach, returns 
-  # -error list for each period ------
-  error_list_arima <- apply_AutoArima(detrendedTrainData,best5errors,testData,output_directory_path,file1)
-  # ------- Apply HoltWinters with top 5 periods retireved from periodogram approach, returns li
-  #-st of errors----------
-  min_arima_index = which(error_list_arima == min(error_list_arima))
-  if(length(min_arima_index) > 1)
-  {
-      min_arima_value <- error_list_arima[min_arima_index[1]]
-  }else{
-    min_arima_value <- error_list_arima[min_arima_index]
+	  print(fileNames[file1])
+	  # ----reads data from csv----
+	  data = read.csv(fileNames[file1],sep=",")
+	  relevantData = data[,1:2]
+	  temp = relevantData[,1]
+	  
+	  # ----convert data into required format----
+	  temp = strptime(temp,format=CONST_DATE_FORMAT)
+	  relevantData[,1] = as.POSIXct(temp)
+	  # ----Check Granularity of data-------
+	  tempList <- check_granularity(relevantData)
+	  tempList <- unlist(tempList)
+	  granularity <- tempList[2]
+	  damp <- tempList[1]
+	  colnames(relevantData) <- c("Time Stamp","CPU Util")
+	  #---- plot data -----
+	  plot_data(relevantData)
+	  #------ remove outliers from data -----------
+	  relevantData <- remove_outliers(relevantData)
+	  
+	  #----- Divide data into train and test  -------
+	  trainPlusTest <- prepare_data(relevantData)
+	  trainData <- trainPlusTest[1]
+	  testData <- trainPlusTest[2]
+	  # ------ fit LM and return the coefficients ---
+	  coeff <- fit_lm_plot(trainData)
+	  trainData = as.data.frame(trainData)
+	  # ------ Detrend the data --------
+	  detrendedTrainData <- detrend(coeff,trainData)
+	  #------------ Set output Directory path ----------
+	  output_folder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\"
+	  subDirectory = paste("Output_",file1,sep="")
+	  dir.create(file.path(output_folder,subDirectory),showWarnings=FALSE)
+	  output_directory_path = paste("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\Output_",file1,sep="")
+	  output_directory_path = paste(output_directory_path,"\\",sep="")
+	  # --------- The periodogram approach, returns errors of this approach and the best 5 periods --------
+	  bestErrorIndexAnderror_list <- compute_periodogram(detrendedTrainData,testData,damp,granularity,coeff,output_directory_path,file1)
+	  best5errors <- bestErrorIndexAnderror_list[1]
+	  best5errors <- as.data.frame(best5errors)
+	  error_list <- bestErrorIndexAnderror_list[2]
+	  error_list <- as.data.frame(error_list)
+	  testData <- as.data.frame(testData)
+	  error_list = error_list$V1
+	  min_custom_index <- which(error_list == min(error_list))
+	  print(min_custom_index)
+	  if(length(min_custom_index)>1)
+	  {
+		  min_custom_value = error_list[min_custom_index[1]]
+	  }else{
+		min_custom_value <- error_list[min_custom_index]
+	  }
+	  print(min_custom_value)
+	  #-------- Apply Auto Arima with top 5 periods retrieved from the periodogram approach, returns 
+	  # -error list for each period ------
+	  error_list_arima <- apply_AutoArima(trainData,best5errors,testData,output_directory_path,file1)
+	  # ------- Apply HoltWinters with top 5 periods retireved from periodogram approach, returns li
+	  #-st of errors----------
+	  min_arima_index = which(error_list_arima == min(error_list_arima))
+	  if(length(min_arima_index) > 1)
+	 {
+		min_arima_value <- error_list_arima[min_arima_index[1]]
+	 }else{
+		min_arima_value <- error_list_arima[min_arima_index]
 
-  }
+	  }
 
-  
-  if(min_custom_value < min_arima_value)
-  {
-    min_whole = min_custom_value
-  }else{
-  min_whole = min_arima_value
-  }
-  
-  error_hw <- apply_HoltWinters(detrendedTrainData,best5errors,testData,output_directory_path,file1)
-   min_hw_index <- which(error_hw == min(error_hw))
-  if(min_hw_index >1)
-  {
-    min_hw_value = error_hw[min_hw_index[1]]
-  }else{
-    min_hw_value <- error_hw[min_hw_index]
-  }
-  
+	  
+	  if(min_custom_value < min_arima_value)
+	  {
+		min_whole = min_custom_value
+	  }else{
+	  min_whole = min_arima_value
+	  }
+	  
+	  error_hw <- apply_HoltWinters(trainData,best5errors,testData,output_directory_path,file1)
+	   min_hw_index <- which(error_hw == min(error_hw))
+	  if(min_hw_index >1)
+	  {
+		min_hw_value = error_hw[min_hw_index[1]]
+	  }else{
+		min_hw_value <- error_hw[min_hw_index]
+	  }
+	  
 
-  if(min_whole < min_hw_value)
-  {
-    min_whole = min_whole
-  }else{
-  min_whole = min_hw_value
-  }
-  
-  print(min_whole)
-  if(min_whole == min_arima_value)
-  {
-    print(paste("Arima is best",min_arima_index,"Period of ",best5errors[min_hw_index,1]))
-  }else{
-    if(min_whole== min_hw_value){
-      print(paste("Holt Winters is best",min_hw_index,"Period of ",best5errors[min_hw_index,1]))
-    }else{
-      if(min_custom_value == min_whole){
-        print(paste("Custom algo does best",min_custom_index,"period of",best5errors[min_custom_index,1]))
-      }
-    }
-  }
-  error_list_arima <- as.data.frame(error_list_arima)
-  error_list <- c(error_list,error_list_arima)
-  error_hw <- as.data.frame(error_hw)
-  error_list <- c(error_list,error_hw)
-  temp = c(error_list$V1,error_list$error_list_arima,error_list$error_hw)
-  temp_vec <- cbind(temp_vec,temp) 
-  print(paste("Out of file..",file1))
-  col_names <- c(col_names,file1)
+	  if(min_whole < min_hw_value)
+	  {
+		min_whole = min_whole
+	  }else{
+	  min_whole = min_hw_value
+	  }
+	  
+	  print(min_whole)
+	  if(min_whole == min_arima_value)
+	  {
+		print(paste("Arima is best",min_arima_index,"Period of ",best5errors[min_hw_index,1]))
+		final_AutoArima(min_arima_index,trainData,testData,best5errors,file1)
+	  }else{
+		if(min_whole== min_hw_value){
+		  print(paste("Holt Winters is best",min_hw_index,"Period of ",best5errors[min_hw_index,1]))
+		  final_HoltWinters(min_hw_index,trainData,testData,best5errors,file1)
+		}else{
+		  if(min_custom_value == min_whole){
+			print(paste("Custom algo does best",min_custom_index,"period of",best5errors[min_custom_index,1]))
+			final_compute_periodogram(detrendedTrainData,testData,damp,granularity,coeff,min_custom_index,file1)
+		  }
+		}
+	  }
+	  error_list_arima <- as.data.frame(error_list_arima)
+	  error_list <- c(error_list,error_list_arima)
+	  error_hw <- as.data.frame(error_hw)
+	  error_list <- c(error_list,error_hw)
+	  temp = c(error_list$V1,error_list$error_list_arima,error_list$error_hw)
+	  temp_vec <- cbind(temp_vec,temp) 
+	  print(paste("Out of file..",file1))
+	  col_names <- c(col_names,file1)
 
 }
 colnames(temp_vec) <- col_names
