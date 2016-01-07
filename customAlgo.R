@@ -143,10 +143,10 @@ final_AutoArima <- function(min_arima_index,trainData,testData,best5errors,file1
 
 	jpeg(lmFileName)
 	plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
-	lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
-	lines((length(detrendedTrainData[,2])+1):totalLength,temp_pred_arima,type="l",col="red",lty=1)
-	lines((length(detrendedTrainData[,2])+1):totalLength,temp_low,type="l",col=5,lty=3)
-	lines((length(detrendedTrainData[,2])+1):totalLength,temp_high,type="l",col=6,lty=3)  
+	lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1,lwd = 1.5,col="blue")
+	lines((length(detrendedTrainData[,2])+1):totalLength,temp_pred_arima,type="l",col="red",lty=1,lwd=1.5)
+	#lines((length(detrendedTrainData[,2])+1):totalLength,temp_low,type="l",col=5,lty=3)
+	#lines((length(detrendedTrainData[,2])+1):totalLength,temp_high,type="l",col=6,lty=3)  
 	dev.off()
 }
 
@@ -187,16 +187,13 @@ apply_AutoArima <- function(detrendedTrainData,best5errors,testData,output_direc
   lmFileName = paste(lmFileName,best_period)
   lmFileName = paste(lmFileName,".jpg")
   totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
+  
   jpeg(lmFileName)
   plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
   lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
   lines((length(detrendedTrainData[,2])+1):totalLength,temp_pred_arima,type="l",col="red",lty=1)
   lines((length(detrendedTrainData[,2])+1):totalLength,temp_low,type="l",col=5,lty=3)
   lines((length(detrendedTrainData[,2])+1):totalLength,temp_high,type="l",col=6,lty=3)  
-  #plot(testData[,2],type="l",col="blue")
-  #lines(temp_pred_arima,col="red")
-  #lines(temp_low,col=3,lty=2)
-  #lines(temp_high,col=3,lty=2)
   dev.off()
   
   error <- calculate_errors_arima(temp_pred_arima,testData)
@@ -215,19 +212,22 @@ calculate_errors_arima <- function(temp_pred_arima,testData)
   error1 = unlist(error1)
   MdAPE = 0
   list_MdAPE <- NULL  
-  for(k in 1:length(error1))
+for(k in 1:length(error1))
   {
     if(testData[k,2] != 0)
     {
-      temp_err <- (abs(error1[k])/abs(testData[k,2]))
+	  numerator = abs(error1[k])
+	  denominator = abs(error1[k]+testData[k,2])	
+      temp_err <- numerator/denominator
+      #temp_err <- (abs(error1[k])/(testData[k,2]))
       list_MdAPE <- c(list_MdAPE,temp_err)
     }else{
-    temp_err <-  abs(error1[k])
-    list_MdAPE <- c(list_MdAPE,temp_err)    
+    temp_err <-  abs(error1[k])/abs(error1[k])
+    list_MdAPE <- c(list_MdAPE)   
     }
   }
   list_MdAPE <- remove_outliers_errors(list_MdAPE)
-  MdAPE <- median(list_MdAPE)
+  MdAPE <- mean(list_MdAPE)
   
   # MAPE =0
   # for(k in 1:length(error1))
@@ -243,13 +243,13 @@ calculate_errors_arima <- function(temp_pred_arima,testData)
   # }
   # }
   # MAPE = MAPE/length(error1)
-   MdAPE = as.numeric(MdAPE)
+  
+  MdAPE = as.numeric(MdAPE)
   return(MdAPE)
 }
 
 predict_lm <- function(trainData,testData,testvar)
 { 
-  #fitLM1 <- testvar
   trainData <- as.data.frame(trainData)
   testData <- as.data.frame(testData)
   fitLM <- lm(as.numeric(trainData[,2])~trainData[,1],data = as.data.frame(trainData))
@@ -262,9 +262,6 @@ predict_lm <- function(trainData,testData,testvar)
   temp1 = as.data.frame(temp1)
   temp1 = fitLM
   
-  #p_conf2 <- predict(x.fitLM,interval="confidence",data = new_data)
-  #p_pred2 <- predict(x.fitLM,interval="prediction",data = new_data)
-  
   lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\LMplot\\"
   lmFileName = paste(lmPlotsFolder,"LM_prediction_plot")
   lmFileName = paste(lmFileName,".jpg")
@@ -273,17 +270,8 @@ predict_lm <- function(trainData,testData,testvar)
   abline(fitLM,col="blue")
   matlines(trainData[,1],p_conf1[,c("lwr","upr")],col=2,lty=1,type="b",pch="+")
   matlines(trainData[,1],p_pred1[,c("lwr","upr")],col=2,lty=2,type="b",pch=1)
-  #matlines(testData[,1],p_conf2[,c("lwr","upr")],col=4,lty=1,type="b",pch="+")
-  #matlines(testData[,1],p_pred2[,c("lwr","upr")],col=4,lty=2,type="b",pch=1)
   dev.off()
   
-}
-
-test <- function(trainData)
-{
-A= 0
-  fitLM1 <- lm(as.numeric(trainData[,2])~trainData[,1],data = as.data.frame(trainData))
-return(list(A,fitLM1))
 }
 
 
@@ -333,10 +321,10 @@ final_HoltWinters  <- function(min_hw_index,trainData,testData,best5errors,file1
 
 	jpeg(lmFileName)
     plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
-    lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
-    lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw,type="l",col="red",lty=1)
-    lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_lower_80,type="l",col=5,lty=3)
-    lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_upper_80,type="l",col=6,lty=3)  
+    lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1.lwd=1.5,col="blue")
+    lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw,type="l",col="red",lty=1,lwd=1.5)
+    #lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_lower_80,type="l",col=5,lty=3)
+    #lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_upper_80,type="l",col=6,lty=3)  
 	dev.off()
 	return(TRUE)
 }
@@ -376,11 +364,8 @@ apply_HoltWinters <- function(detrendedTrainData,best5errors,testData,output_dir
     lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw,type="l",col="red",lty=1)
     lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_lower_80,type="l",col=5,lty=3)
     lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_upper_80,type="l",col=6,lty=3)   
-    #plot(testData[,2],type="l",col="blue")
-    #lines(pred_hw,col="red")
-    #lines(pred_hw_lower,col=3,lty=2)
-    #lines(pred_hw_upper,col=3,lty=2)
     dev.off()
+   
 	error <- calculate_errors_hw(pred_hw,testData)
 	print(paste("HoltWinters",err,"period",error))
 	error_hw_list <- c(error_hw_list,error)
@@ -406,16 +391,19 @@ calculate_errors_hw <- function(temp_pred_hw,testData)
   {
     if(testData[k,2] != 0)
     {
-      temp_err <- (abs(error1[k])/abs(testData[k,2]))
+	  numerator = abs(error1[k])
+	  denominator = abs(error1[k]+testData[k,2])	
+      temp_err <- numerator/denominator
+      #temp_err <- (abs(error1[k])/(testData[k,2]))
       list_MdAPE <- c(list_MdAPE,temp_err)
     }else{
-    temp_err <-  abs(error1[k]/temp_err)
+    temp_err <-  abs(error1[k])/abs(error1[k])
     list_MdAPE <- c(list_MdAPE)   
     }
   }
   
   list_MdAPE <- remove_outliers_errors(list_MdAPE)
-  MdAPE <- median(list_MdAPE) 
+  MdAPE <- mean(list_MdAPE) 
   
   # MAPE =0
   # for(k in 1:length(error1))
@@ -499,7 +487,6 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
 	temp1 <- temp1[-temp_freq_list,]
 	
 	sortedTemp1 = temp1[order(temp1[,1],decreasing=TRUE),]
-  #sortedTemp1 <- colnames("Spectral Energy","Inverse Frequency")
 	top20periods <- 1/sortedTemp1[1:20,2]
 	
 	if(length(min_custom_index) > 1)
@@ -544,18 +531,14 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
   {
   if(temp[k,folds]==0.000000)
   {
-    #pred_temp = sum(temp[k,])
-    #pred_temp = median(temp[k,],na.rm=TRUE)
+    
     var1 = quantile(temp[k,], probs = c(0, 0.25, 0.5, 0.75, 1)) # quartile
       pred_temp = as.numeric(var1[3])
-    #pred_temp = pred_temp/(folds-1)
     predicted_bin[k] = pred_temp
   }
-  #pred_temp = sum(temp[k,])
-  #pred_temp = median(temp[k,],na.rm=TRUE)
+ 
   var1 = quantile(temp[k,], probs = c(0, 0.25, 0.5, 0.75, 1)) # quartile
   pred_temp = as.numeric(var1[3])
-  #pred_temp = pred_temp/folds
   predicted_bin[k] = pred_temp
   std_temp = sd(temp[k,],na.rm=TRUE)
   std_bin[k] = std_temp
@@ -608,11 +591,13 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
 	
 	
   jpeg(lmFileName)
-  plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
-  lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
-  lines((length(detrendedTrainData[,2])+1):totalLength,combined[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col="red",lty=1)
-  lines((length(detrendedTrainData[,2])+1):totalLength,combined_lower[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col=5,lty=3)
-  lines((length(detrendedTrainData[,2])+1):totalLength,combined_higher[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col=6,lty=3)
+	{
+	  plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
+	  lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1, lwd = 1.5, col = "blue")
+	  lines((length(detrendedTrainData[,2])+1):totalLength,combined[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col="red",lty=1, lwd =1.5)
+	  #lines((length(detrendedTrainData[,2])+1):totalLength,combined_lower[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col=5,lty=3)
+	  #lines((length(detrendedTrainData[,2])+1):totalLength,combined_higher[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col=6,lty=3)
+	 } 
 	dev.off()
 }
 
@@ -655,10 +640,8 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
 	temp1 <- temp1[-temp_freq_list,]
 	
   sortedTemp1 = temp1[order(temp1[,1],decreasing=TRUE),]
-  #sortedTemp1 <- colnames("Spectral Energy","Inverse Frequency")
   top20periods <- 1/sortedTemp1[1:20,2]
   print(top20periods)
-  #if(file1==9)
   
   for(ind in 1:length(top20periods))
   {
@@ -670,17 +653,8 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
   }
   }
   print(top20periods)
-  #rounded_vals <- NULL
-  #for(i in 1:length(top20periods))
-  #{
-  # if(round(top20periods[i])!=top20periods[i])
-  # {
-  #   rounded_vals <- c(rounded_vals,round(top20periods[i]))  
-  # }
-  #}
-  #top20periods <- c(top20periods,rounded_vals)
+  
   error_list <- predict_next_bin_detrended(top20periods,detrendedTrainData,testData,granularity,slope,output_directory_path,file1)
-  #best_period_index <- which(error_list==min(error_list))
   errors_and_periods <- cbind(top20periods,error_list)
   errors_and_periods  <- errors_and_periods[order(errors_and_periods[,2]),]
   best5errors <- errors_and_periods[1:5,]
@@ -696,8 +670,7 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,
   error_list <- NULL
   for(i in 1: length(top20periods))
   {
-  #if(file1 != 7 || i != 3)
-  #{
+ 
     current_period = top20periods[i]
     temp = matrix(data = 0,nrow=current_period,ncol=1)
 
@@ -735,18 +708,15 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,
   {
   if(temp[k,folds]==0.000000)
   {
-    #pred_temp = sum(temp[k,])
-    #pred_temp = median(temp[k,],na.rm=TRUE)
+    
     var1 = quantile(temp[k,], probs = c(0, 0.25, 0.5, 0.75, 1)) # quartile
       pred_temp = as.numeric(var1[3])
-    #pred_temp = pred_temp/(folds-1)
+   
     predicted_bin[k] = pred_temp
   }
-  #pred_temp = sum(temp[k,])
-  #pred_temp = median(temp[k,],na.rm=TRUE)
+  
   var1 = quantile(temp[k,], probs = c(0, 0.25, 0.5, 0.75, 1)) # quartile
   pred_temp = as.numeric(var1[3])
-  #pred_temp = pred_temp/folds
   predicted_bin[k] = pred_temp
   std_temp = sd(temp[k,],na.rm=TRUE)
   std_bin[k] = std_temp
@@ -797,21 +767,22 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,
   lmFileName = paste(lmFileName,top20periods[i])
     lmFileName = paste(lmFileName,".jpg")
   totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
+  
   jpeg(lmFileName)
   plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
   lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
   lines((length(detrendedTrainData[,2])+1):totalLength,combined[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col="red",lty=1)
   lines((length(detrendedTrainData[,2])+1):totalLength,combined_lower[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col=5,lty=3)
   lines((length(detrendedTrainData[,2])+1):totalLength,combined_higher[(length(detrendedTrainData[,1])+1):(length(combined))],type="l",col=6,lty=3)
-  #lines(combined[length(detrendedTrainData[,1]):length(combined)],type="l",col="red")
   dev.off()
+  
   testData <- testData
   error <- calculate_errors(predicted_bin,testData)
   #print(error)
   error_list <- rbind(error_list,error)
   #print(error_list)
   }
-  #}
+  
   return(error_list)
 }
 
@@ -824,23 +795,44 @@ calculate_errors <- function(predicted_bin,testData)
   }else{
   error1 = testData[1:length(predicted_bin),2] - predicted_bin 
   }
-  #---------- MdAPE-------------
-  MdAPE = 0
+  #-----------sMAPE---------------
+    MdAPE = 0
   list_MdAPE <- NULL  
-  for(k in 1:length(error1))
+for(k in 1:length(error1))
   {
     if(testData[k,2] != 0)
     {
-      temp_err <- (abs(error1[k])/abs(testData[k,2]))
+	  numerator = abs(error1[k])
+	  denominator = abs(error1[k]+testData[k,2])	
+      temp_err <- numerator/denominator
+      #temp_err <- (abs(error1[k])/(testData[k,2]))
       list_MdAPE <- c(list_MdAPE,temp_err)
     }else{
-    temp_err <-  abs(error1[k])
-    list_MdAPE <- c(list_MdAPE,temp_err)    
+    temp_err <-  abs(error1[k])/abs(error1[k])
+    list_MdAPE <- c(list_MdAPE)   
     }
   }
   list_MdAPE <- remove_outliers_errors(list_MdAPE)
   print("Successful")
-  MdAPE <- median(list_MdAPE)
+  MdAPE <- mean(list_MdAPE)
+  
+  #---------- MdAPE-------------
+  # MdAPE = 0
+  # list_MdAPE <- NULL  
+  # for(k in 1:length(error1))
+  # {
+    # if(testData[k,2] != 0)
+    # {
+      # temp_err <- (abs(error1[k])/abs(testData[k,2]))
+      # list_MdAPE <- c(list_MdAPE,temp_err)
+    # }else{
+    # temp_err <-  abs(error1[k])
+    # list_MdAPE <- c(list_MdAPE,temp_err)    
+    # }
+  # }
+  # list_MdAPE <- remove_outliers_errors(list_MdAPE)
+  # print("Successful")
+  # MdAPE <- median(list_MdAPE)
   
   
   
@@ -964,7 +956,7 @@ remove_outliers_errors <- function(list_values)
   }
 
 
-}
+} 
 
 remove_outliers <- function(relevantData)
 {
@@ -1002,21 +994,62 @@ remove_outliers <- function(relevantData)
 
 manage_holes <- function(relevantData)
 {
-	start_time = relevantData[1,1]
-	end_time = relevantData[length(relevantData),1]
-	time_diff_list <- NULL
-	for(time_ind in 1:(length(relevantData[,2])-1))
+	orig_data = relevantData[,1]
+	date_data = as.Date(orig_data)
+	start_date = date_data[1]
+	end_date = date_data[length(date_data)]
+	gen_seq = seq(start_date,end_date,by="day")
+	gen_seq = as.data.frame(list(time=gen_seq))
+	temp_relevantData <- cbind(as.character(date_data),relevantData[,2])
+	gen_seq = gen_seq$time
+	colnames(temp_relevantData) <- c("time","value")
+	gen_seq = as.character(gen_seq)
+	temp_vec <- NULL
+		
+	for(time1 in 1:length(gen_seq))
 	{
-		time_diff_value = difftime(relevantData[time_ind+1,1],relevantData[time_ind,1],units="mins")
-		time_diff_list <- c(time_diff_list,time_diff_value)
-	}
-	print(time_diff_list)
-	date_data = relevantData[,1]
-	date_data = as.Date(date_data)
-	temp_relevantData <- date_data
-	temp_relevantData <- cbind(temp_relevantData,relevantData[,2])
+		index = which(temp_relevantData[,1] == gen_seq[time1])
+		if(length(index) == 1)
+			{
+				temp_vec <- c(temp_vec,temp_relevantData[index,2])
+			}
+		if(length(index) > 1)
+		{
+			temp1_sum = 0
+			print("Took Average")
+			for(index2 in 1:length(index))
+			{
+				temp1_sum = temp1_sum + as.numeric(temp_relevantData[index2,2]) 
+			}
+			temp1_sum = temp1_sum/length(index)
+			temp_vec <- c(temp_vec,temp1_sum)
+		}
+		if(length(index) == 0)
+		{
+			print("Inserted NA")
+			temp_vec <- c(temp_vec,NA)
+		}
 	
 	}
+	temp_vec = as.numeric(temp_vec)
+	
+	for(index1 in 1:length(temp_vec))
+	{
+		if(is.na(temp_vec[index1]))
+		{
+			temp_vec[index1] = temp_vec[index1-1]+temp_vec[index1+1]
+			temp_vec[index1] = temp_vec[index1]/2
+		}
+	}
+	merged_data <- cbind(gen_seq,temp_vec)
+	#print(temp_vec)
+	merged_data = as.data.frame(merged_data)
+	#print(merged_data)
+	relevantData = merged_data
+	relevantData[,1] = as.character(relevantData[,1])
+	relevantData[,2] = as.numeric(relevantData[,2])
+	return(relevantData)
+}
 
 
 
@@ -1044,7 +1077,9 @@ for(file1 in 1:length(fileNames))
 	  #---- plot data -----
 	  plot_data(relevantData)
 	  #------manage holes----
-	  relevantData <- manage_holes(relevantData)
+      if(granularity > 1000){
+		relevantData <- manage_holes(relevantData)
+	  }
 	  #------ remove outliers from data -----------
 	  relevantData <- remove_outliers(relevantData)
 	  
