@@ -10,7 +10,7 @@ prepare_data <-function(currentData)
   trainData = NULL
   
   timeDiff = difftime(currentData[,1],minTime,"mins")
-  thresholdValue = difftime(maxTime,minTime,"mins")*0.8
+  thresholdValue = difftime(maxTime,minTime,"mins")*0.85
   for(j in 1:length(timeDiff))
   {
     if(timeDiff[j]>thresholdValue)
@@ -161,6 +161,11 @@ apply_AutoArima <- function(detrendedTrainData,best5errors,testData,output_direc
   tsdata1 = ts(data1,frequency=best_period)
   library(forecast)
   fit_auto_arima <- auto.arima(tsdata1)
+  actual_data_arima <- fit_auto_arima$x
+  predicted_data_arima <- fitted(fit_auto_arima)
+  actual_data_arima <- as.data.frame(actual_data_arima)
+  predicted_data_arima <- as.data.frame(predicted_data_arima)
+  #train_error <- calculate_errors_arima(predicted_data_arima,actual_data_arima)
   testData = as.data.frame(testData)
   len = length(testData[,2])
   fc <- try(predict(fit_auto_arima,n.ahead=len), silent = TRUE)
@@ -196,9 +201,9 @@ apply_AutoArima <- function(detrendedTrainData,best5errors,testData,output_direc
   lines((length(detrendedTrainData[,2])+1):totalLength,temp_high,type="l",col=6,lty=3)  
   dev.off()
   
-  error <- calculate_errors_arima(temp_pred_arima,testData)
-  error_list_arima <- c(error_list_arima,error)
-  print(paste("The error of Arima #",err,"is",error))
+  test_error <- calculate_errors_arima(temp_pred_arima,testData)
+  error_list_arima <- c(error_list_arima,test_error)
+  print(paste("The error of Arima #",err,"is",test_error))
   }
   
   return(error_list_arima)
@@ -206,15 +211,18 @@ apply_AutoArima <- function(detrendedTrainData,best5errors,testData,output_direc
 
 calculate_errors_arima <- function(temp_pred_arima,testData)
 { 
-  temp_pred_arima = unlist(temp_pred_arima)
   testData = as.data.frame(testData)
-  error1 = as.numeric(temp_pred_arima) - testData[,2]
-  error1 = unlist(error1)
-  MdAPE = 0
-  list_MdAPE <- NULL  
-for(k in 1:length(error1))
+  if(length(testData) == 2)
   {
-    if(testData[k,2] != 0)
+	temp_pred_arima = unlist(temp_pred_arima)
+	error1 = as.numeric(temp_pred_arima) - testData[,2]
+	error1 = unlist(error1)
+	
+	MdAPE = 0
+	list_MdAPE <- NULL  
+	for(k in 1:length(error1))
+	{
+		if(testData[k,2] != 0)
     {
 	  numerator = abs(error1[k])
 	  denominator = abs(error1[k]+testData[k,2])	
@@ -226,6 +234,27 @@ for(k in 1:length(error1))
     list_MdAPE <- c(list_MdAPE)   
     }
   }
+  }else
+  {
+	error1 = temp_pred_arima - testData
+	MdAPE = 0
+	list_MdAPE <- NULL  
+	for(k in 1:length(error1))
+	{
+		if(testData[k] != 0)
+		{
+		  numerator = abs(error1[k])
+		  denominator = abs(error1[k]+testData[k])	
+		  temp_err <- numerator/denominator
+		  #temp_err <- (abs(error1[k])/(testData[k,2]))
+		  list_MdAPE <- c(list_MdAPE,temp_err)
+		}else{
+		temp_err <-  abs(error1[k])/abs(error1[k])
+		list_MdAPE <- c(list_MdAPE)   
+			}
+	}
+   }
+  
   list_MdAPE <- remove_outliers_errors(list_MdAPE)
   MdAPE <- mean(list_MdAPE)
   
@@ -321,7 +350,7 @@ final_HoltWinters  <- function(min_hw_index,trainData,testData,best5errors,file1
 
 	jpeg(lmFileName)
     plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
-    lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1.lwd=1.5,col="blue")
+    lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1,lwd=1.5,col="blue")
     lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw,type="l",col="red",lty=1,lwd=1.5)
     #lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_lower_80,type="l",col=5,lty=3)
     #lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_upper_80,type="l",col=6,lty=3)  
