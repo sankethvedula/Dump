@@ -10,7 +10,7 @@ prepare_data <-function(currentData)
   trainData = NULL
   
   timeDiff = difftime(currentData[,1],minTime,"mins")
-  thresholdValue = difftime(maxTime,minTime,"mins")*0.85
+  thresholdValue = difftime(maxTime,minTime,"mins")*0.80
   for(j in 1:length(timeDiff))
   {
     if(timeDiff[j]>thresholdValue)
@@ -107,10 +107,12 @@ plot(relevantData[,1],relevantData[,2],type="l",xlab=colnames(relevantData)[1],y
 final_AutoArima <- function(min_arima_index,trainData,testData,best5errors,file1)
 {
 	detrendedTrainData <- trainData
+	#best5errors[,1] = c(7,14,10,36,29) 
 	if(length(min_arima_index) > 1)
 	{
 		min_arima_index = min_arima_index[1]
 	}
+	#best_period = 7
 	best_period <- best5errors[min_arima_index,1]
 	data1 = detrendedTrainData[,2]
 	tsdata1 = ts(data1,frequency=best_period)
@@ -153,6 +155,7 @@ final_AutoArima <- function(min_arima_index,trainData,testData,best5errors,file1
 apply_AutoArima <- function(detrendedTrainData,best5errors,testData,output_directory_path,file1)
 {
   error_list_arima <- NULL
+  #best5errors[,1] = c(7,14,10,36,29) 
   for(err in 1:length(best5errors[,1]))
   {
   #print(err)
@@ -277,6 +280,61 @@ calculate_errors_arima <- function(temp_pred_arima,testData)
   return(MdAPE)
 }
 
+apply_ets <- function(detrendedTrainData,best5errors,testData,output_directory_path,file1)
+{
+  error_list_ets <- NULL
+  #best5errors[,1] = c(7,14,10,36,29) 
+
+  for(err in 1:length(best5errors[,1]))
+  {
+	  #print(err)
+	best_period = best5errors[err,1]
+	data1 = detrendedTrainData[,2]
+	tsdata1 = ts(data1,frequency=best_period)
+	library(forecast)
+	err_model = try((ets_model= ets(tsdata1,"AAA",additive.only = TRUE)),silent=TRUE)
+	if(inherits(err_model, 'try-error'))
+    {
+    message_string = paste('Error in predicting')
+    print(message_string)
+    error_list_ets <- c(error_list_ets,"NA")
+    next
+    }
+	#ets_model = ets(tsdata1,"AAA",additive.only = TRUE)
+	fc <- forecast(ets_model,h=length(testData[,2]))
+	pred_ets <- fc$mean
+	pred_ets <- as.numeric(pred_ets)
+	totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
+	  
+	pred_ets_upper_80 <- ets_model$upper[,1]
+    pred_ets_upper_95 <- ets_model$upper[,2]
+    pred_ets_lower_80 <- ets_model$lower[,1]
+    pred_ets_lower_95 <- ets_model$lower[,2]
+    pred_ets = as.numeric(pred_ets)
+    pred_ets_lower = as.numeric(ets_model$lower)
+    pred_ets_upper = as.numeric(ets_model$upper)
+    lmPlotsFolder = output_directory_path
+    lmFileName = paste(lmPlotsFolder,err,"ETS with period")
+    lmFileName = paste(lmFileName,best_period)
+    lmFileName = paste(lmFileName,".jpg")
+
+	jpeg(lmFileName)
+	plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
+	lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
+	lines((length(detrendedTrainData[,2])+1):totalLength,pred_ets,type="l",col="red",lty=1)
+	lines((length(detrendedTrainData[,2])+1):totalLength,pred_ets_lower_80,type="l",col=5,lty=3)
+    lines((length(detrendedTrainData[,2])+1):totalLength,pred_ets_upper_80,type="l",col=6,lty=3)   
+    dev.off()
+	#print("Got away")
+	error <- calculate_errors_hw(pred_ets,testData)
+	print(paste("ETS ",err,"period",error))
+	error_list_ets <- c(error_list_ets,error)
+
+  }
+  return(error_list_ets)
+}
+
+
 predict_lm <- function(trainData,testData,testvar)
 { 
   trainData <- as.data.frame(trainData)
@@ -325,10 +383,69 @@ decompose_data <- function(detrendedTrainData)
 
 }
 
+
+final_ets <- function(min_ets_index,trainData,testData,best5errors,file1)
+{
+	detrendedTrainData = trainData
+	#best5errors[,1] = c(7,14,10,36,29) 
+	if(length(min_ets_index) > 1)
+	{
+		min_ets_index = min_ets_index[1]
+	}
+	best_period = best5errors[min_ets_index,1]
+	print(min_ets_index)
+	#best_period = best5errors[err,1]
+	data1 = detrendedTrainData[,2]
+	tsdata1 = ts(data1,frequency=best_period)
+	library(forecast)
+	err_model = try((ets_model= ets(tsdata1,"AAA",additive.only = TRUE)),silent=TRUE)
+	if(inherits(err_model, 'try-error'))
+    {
+    message_string = paste('Error in predicting')
+    print(message_string)
+    error_list_arima <- c(error_list_ets,"NA")
+    #next
+	return(FALSE)
+    }
+	fc <- forecast(ets_model,h=length(testData[,2]))
+	pred_ets <- fc$mean
+	pred_ets <- as.numeric(pred_ets)
+	totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
+	  
+	pred_ets_upper_80 <- ets_model$upper[,1]
+    pred_ets_upper_95 <- ets_model$upper[,2]
+    pred_ets_lower_80 <- ets_model$lower[,1]
+    pred_ets_lower_95 <- ets_model$lower[,2]
+    pred_ets = as.numeric(pred_ets)
+    pred_ets_lower = as.numeric(ets_model$lower)
+    pred_ets_upper = as.numeric(ets_model$upper)
+    lmPlotsFolder = output_directory_path
+    lmFileName = paste(lmPlotsFolder)
+    lmFileName = paste(lmFileName,file1)
+    lmFileName = paste(lmFileName,".jpg")
+	
+	jpeg(lmFileName)
+    plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
+    lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1,lwd=1.5,col="blue")
+    lines((length(detrendedTrainData[,2])+1):totalLength,pred_ets,type="l",col="red",lty=1,lwd=1.5)
+    #lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_lower_80,type="l",col=5,lty=3)
+    #lines((length(detrendedTrainData[,2])+1):totalLength,pred_hw_upper_80,type="l",col=6,lty=3)  
+	dev.off()
+
+}
+
 final_HoltWinters  <- function(min_hw_index,trainData,testData,best5errors,file1)
 {
 	detrendedTrainData = trainData
-	best_period = best5errors[min_hw_index,1]
+	#best5errors[,1] = c(7,14,10,36,29) 
+	if(length(min_hw_index) > 1)
+	{
+		best_period = best5errors[min_hw_index[1],1]
+	}else{
+		best_period = best5errors[min_hw_index,1]
+
+	}
+	#best_period = 7
 	print(min_hw_index)
 	testData = as.data.frame(testData)
     tsdataHW = ts(data1,frequency=best_period)
@@ -362,6 +479,7 @@ final_HoltWinters  <- function(min_hw_index,trainData,testData,best5errors,file1
 apply_HoltWinters <- function(detrendedTrainData,best5errors,testData,output_directory_path,file1)
 {
   error_hw_list <- NULL
+  #best5errors[,1] = c(7,14,10,36,29) 
   for(err in 1:length(best5errors[,1]))
   {
   best_period <- best5errors[err,1]
@@ -507,7 +625,7 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
 	temp_freq_list <- NULL
 	for(temp_freq_index in 1:length(periodogramData[,1]))
 	{
-		if(periodogramData[temp_freq_index,2] > 0.40)
+		if(periodogramData[temp_freq_index,2] >= 0.19)
 		{
 			temp_freq_list <- c(temp_freq_list,temp_freq_index)
 		}
@@ -660,7 +778,7 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
   	temp_freq_list <- NULL
 	for(temp_freq_index in 1:length(periodogramData[,1]))
 	{
-		if(periodogramData[temp_freq_index,2] > 0.40)
+		if(periodogramData[temp_freq_index,2] >= 0.19)
 		{
 			temp_freq_list <- c(temp_freq_list,temp_freq_index)
 		}
@@ -1086,7 +1204,7 @@ manage_holes <- function(relevantData)
 fileNames = list.files(path = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\",pattern=".csv",full.names=TRUE)
 temp_vec <- NULL
 col_names <- NULL
-for(file1 in 1:length(fileNames))
+for(file1 in 10:length(fileNames))
 { 
 	  print(fileNames[file1])
 	  # ----reads data from csv----
@@ -1147,8 +1265,7 @@ for(file1 in 1:length(fileNames))
 	  #-------- Apply Auto Arima with top 5 periods retrieved from the periodogram approach, returns 
 	  # -error list for each period ------
 	  error_list_arima <- apply_AutoArima(trainData,best5errors,testData,output_directory_path,file1)
-	  # ------- Apply HoltWinters with top 5 periods retireved from periodogram approach, returns li
-	  #-st of errors----------
+	
 	  min_arima_index = which(error_list_arima == min(error_list_arima))
 	  if(length(min_arima_index) > 1)
 	 {
@@ -1165,7 +1282,8 @@ for(file1 in 1:length(fileNames))
 	  }else{
 	  min_whole = min_arima_value
 	  }
-	  
+	    # ------- Apply HoltWinters with top 5 periods retireved from periodogram approach, returns li
+	  #-st of errors----------
 	  error_hw <- apply_HoltWinters(trainData,best5errors,testData,output_directory_path,file1)
 	   min_hw_index <- which(error_hw == min(error_hw,na.rm=TRUE))
 	  if(min_hw_index >1)
@@ -1183,6 +1301,26 @@ for(file1 in 1:length(fileNames))
 	  min_whole = min_hw_value
 	  }
 	  
+	  # ----------Apply Exponential Smoothing State Space model (ETS) -----------------
+	  error_ets <- apply_ets(trainData,best5errors,testData,output_directory_path,file1)
+	  
+	  min_ets_index <- which(error_ets == min(error_ets,na.rm=TRUE))
+	  
+	  if(min_ets_index > 1)
+	  {
+		min_ets_value = error_ets[min_ets_index[1]]
+	  }else{
+		min_ets_value = error_ets[min_ets_index]
+	  }
+	  
+	  if(min_whole < min_ets_value)
+	  {
+		min_whole = min_whole
+	  }else{
+		min_whole = min_ets_value
+	  }
+	  
+	  
 	  print(min_whole)
 	  if(min_whole == min_arima_value)
 	  {
@@ -1196,6 +1334,12 @@ for(file1 in 1:length(fileNames))
 		  if(min_custom_value == min_whole){
 			print(paste("Custom algo does best",min_custom_index,"period of",best5errors[min_custom_index,1]))
 			final_compute_periodogram(detrendedTrainData,testData,damp,granularity,coeff,min_custom_index,file1)
+		  }else{
+			if(min_ets_value == min_whole){
+			print(paste("ETS Smoothing is the best",min_ets_index))
+			final_ets(min_ets_index,trainData,testData,best5errors,file1)
+			}
+		  
 		  }
 		}
 	  }
@@ -1212,6 +1356,7 @@ for(file1 in 1:length(fileNames))
 colnames(temp_vec) <- col_names
 # write results to the output file
 write.table(temp_vec,"C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\Results\\results1.csv",append=FALSE,sep=",",col.names=TRUE,row.names = FALSE)
+#write.table(relevantData,"C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\Results\\temp.csv",append=FALSE,sep=",",col.names=TRUE,row.names = FALSE)
 
 
 # another approach to find the best frequency
