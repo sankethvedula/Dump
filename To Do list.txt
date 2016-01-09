@@ -1,13 +1,6 @@
 1. Clean up the code and mak it standard.
-2. pick the one with least error and plot only one graph..
-3. Check if there is any error with HoltWinters -> giving weird plots!
-4. Remove outliers..It might be its effecting the whole plot.
-5. Algo of algo wrapper -> to be built. 
-6. Check if HoltWinters is wrongly applied or something..If the trend is properly set or not.
-
+2. Make a report.
 
 Limitations of the code:
 1. Works only if it is 20 periods..the errors..
-2. The case in which there is a floating point exception. (like the one found in code) -> currently being handled manually 
-^ Rounding the periods would do.
-3. The data should be in 2 and 3rd columns of a .csv file.
+2. The data should be in 2 and 3rd columns of a .csv file.
