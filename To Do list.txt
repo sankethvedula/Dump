@@ -1,5 +1,6 @@
-1. Clean up the code and mak it standard.
+1. Clean up the code and make it standard.
 2. Make a report.
+3. Fix to a standard error measure. 
 
 Limitations of the code:
 1. Works only if it is 20 periods..the errors..
