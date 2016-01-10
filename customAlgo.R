@@ -383,6 +383,42 @@ decompose_data <- function(detrendedTrainData)
 
 }
 
+final_nnets <- function(min_nnet_index,trainData,testData,best5errors,file1)
+{
+	detrendedTrainData = trainData
+	if(length(min_nnet_index) > 1)
+	{
+		min_nnet_index = min_nnet_index[1]
+	}
+	best_period = best5errors[min_nnet_index,1]
+	print(min_nnet_index)
+
+	data1 = detrendedTrainData[,2]
+	testData = as.data.frame(testData)
+    data1 = detrendedTrainData[,2]
+    tsdataHW = ts(data1,frequency=best_period)
+    nnetObj = nnetar(tsdataHW)
+    fcObject <- forecast(nnetObj,h=length(testData[,2]),level=c(80,95))
+    pred_nnet <- fcObject$mean
+    pred_nnet_upper_80 <- fcObject$upper[,1]
+    pred_nnet_upper_95 <- fcObject$upper[,2]
+    pred_nnet_lower_80 <- fcObject$lower[,1]
+    pred_nnet_lower_95 <- fcObject$lower[,2]
+    totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
+    pred_nnet = as.numeric(pred_nnet)
+    pred_nnet_lower = as.numeric(fcObject$lower)
+    pred_nnet_upper = as.numeric(fcObject$upper)
+    lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Output_final\\"
+    lmFileName = paste(lmPlotsFolder)
+    lmFileName = paste(lmFileName,file1)
+    lmFileName = paste(lmFileName,".jpg")
+
+    jpeg(lmFileName)
+    plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
+    lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1,lwd=1.5,col="blue")
+    lines((length(detrendedTrainData[,2])+1):totalLength,pred_nnet,type="l",col="red",lty=1,lwd=1.5)
+    dev.off()
+}
 
 final_ets <- function(min_ets_index,trainData,testData,best5errors,file1)
 {
@@ -419,7 +455,7 @@ final_ets <- function(min_ets_index,trainData,testData,best5errors,file1)
     pred_ets = as.numeric(pred_ets)
     pred_ets_lower = as.numeric(ets_model$lower)
     pred_ets_upper = as.numeric(ets_model$upper)
-    lmPlotsFolder = output_directory_path
+    lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Output_final\\"
     lmFileName = paste(lmPlotsFolder)
     lmFileName = paste(lmFileName,file1)
     lmFileName = paste(lmFileName,".jpg")
@@ -527,6 +563,56 @@ apply_HoltWinters <- function(detrendedTrainData,best5errors,testData,output_dir
 }
 
 
+apply_nnets <- function(detrendedTrainData,best5errors,testData,output_directory_path,file1)
+{
+  library("nnet")
+  error_nnet_list <- NULL
+  #best5errors[,1] = c(7,14,10,36,29) 
+  for(err in 1:length(best5errors[,1]))
+  {
+  best_period <- best5errors[err,1]
+  error <- NA
+  if(best_period <= length(detrendedTrainData[,2])/2)
+  {
+    testData = as.data.frame(testData)
+    data1 = detrendedTrainData[,2]
+    tsdataHW = ts(data1,frequency=best_period)
+    nnetObj = nnetar(tsdataHW)
+    fcObject <- forecast(nnetObj,h=length(testData[,2]),level=c(80,95))
+    pred_nnet <- fcObject$mean
+    pred_nnet_upper_80 <- fcObject$upper[,1]
+    pred_nnet_upper_95 <- fcObject$upper[,2]
+    pred_nnet_lower_80 <- fcObject$lower[,1]
+    pred_nnet_lower_95 <- fcObject$lower[,2]
+    pred_nnet = as.numeric(pred_nnet)
+    pred_nnet_lower = as.numeric(fcObject$lower)
+    pred_nnet_upper = as.numeric(fcObject$upper)
+    lmPlotsFolder = output_directory_path
+    lmFileName = paste(lmPlotsFolder,err,"Neural Nets with period")
+    lmFileName = paste(lmFileName,best_period)
+    lmFileName = paste(lmFileName,".jpg")
+    totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
+    
+    jpeg(lmFileName)
+    plot(1:length(detrendedTrainData[,2]),detrendedTrainData[,2],type="l",xlim=c(0,totalLength))
+    lines((length(detrendedTrainData[,2])+1):totalLength,testData[,2],type="l",lty=1)
+    lines((length(detrendedTrainData[,2])+1):totalLength,pred_nnet,type="l",col="red",lty=1)
+    #lines((length(detrendedTrainData[,2])+1):totalLength,pred_nnet_lower_80,type="l",col=5,lty=3)
+    #lines((length(detrendedTrainData[,2])+1):totalLength,pred_nnet_upper_80,type="l",col=6,lty=3)   
+    dev.off()
+   
+	error <- calculate_errors_hw(pred_nnet,testData)
+	print(paste("Neural Nets",err,"period",error))
+	error_nnet_list <- c(error_nnet_list,error)
+  }
+ if(is.na(error)){
+ error_nnet_list <- c(error_nnet_list,error)
+ }
+  }
+ return(error_nnet_list)  
+}
+
+
 calculate_errors_hw <- function(temp_pred_hw,testData)
 { 
  
@@ -627,7 +713,7 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
 	temp_freq_list <- NULL
 	for(temp_freq_index in 1:length(periodogramData[,1]))
 	{
-		if(periodogramData[temp_freq_index,2] >= 0.19)
+		if(periodogramData[temp_freq_index,2] >= 0.18)
 		{
 			temp_freq_list <- c(temp_freq_list,temp_freq_index)
 		}
@@ -636,7 +722,7 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
 	temp1 <- temp1[-temp_freq_list,]
 	
 	sortedTemp1 = temp1[order(temp1[,1],decreasing=TRUE),]
-	top20periods <- 1/sortedTemp1[1:20,2]
+	top20periods <- 1/sortedTemp1[1:(length(sortedTemp1[,1])),2]
 	
 	if(length(min_custom_index) > 1)
 	{
@@ -780,7 +866,7 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
   	temp_freq_list <- NULL
 	for(temp_freq_index in 1:length(periodogramData[,1]))
 	{
-		if(periodogramData[temp_freq_index,2] >= 0.19)
+		if(periodogramData[temp_freq_index,2] >= 0.18)
 		{
 			temp_freq_list <- c(temp_freq_list,temp_freq_index)
 		}
@@ -789,7 +875,7 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
 	temp1 <- temp1[-temp_freq_list,]
 	
   sortedTemp1 = temp1[order(temp1[,1],decreasing=TRUE),]
-  top20periods <- 1/sortedTemp1[1:20,2]
+	top20periods <- 1/sortedTemp1[1:(length(sortedTemp1[,1])),2]
   print(top20periods)
   
   for(ind in 1:length(top20periods))
@@ -1322,6 +1408,23 @@ for(file1 in 1:length(fileNames))
 		min_whole = min_ets_value
 	  }
 	  
+	  error_nnet <- apply_nnets(trainData,best5errors,testData,output_directory_path,file1)
+
+	  min_nnet_index <- which(error_nnet == min(error_nnet,na.rm = TRUE))
+
+	  if(min_nnet_index > 1)
+	  {
+	  	min_nnet_value = error_nnet[min_nnet_index[1]]
+	  }else{
+	  	min_nnet_value = error_nnet[min_nnet_index]
+	  }
+
+	  if(min_whole < min_nnet_value)
+	  {
+	  	min_whole = min_whole
+	  }else{
+	  	min_whole = min_nnet_value
+	  }
 	  
 	  print(min_whole)
 	  if(min_whole == min_arima_value)
@@ -1340,6 +1443,11 @@ for(file1 in 1:length(fileNames))
 			if(min_ets_value == min_whole){
 			print(paste("ETS Smoothing is the best",min_ets_index))
 			final_ets(min_ets_index,trainData,testData,best5errors,file1)
+			}else{
+				if(min_nnet_value == min_whole){
+					print(paste("Neural Nets is doing best ", min_nnet_index))
+					final_nnets(min_nnet_index,trainData,testData,best5errors,file1)
+				}
 			}
 		  
 		  }
