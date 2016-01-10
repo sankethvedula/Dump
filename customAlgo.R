@@ -74,7 +74,7 @@ fit_lm_plot <- function(trainData)
   MAPE <- errors[2]
   print(paste("R squared : ",rSquared))
 
-  lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\LMplot\\"
+  lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\LMplot\\"
   lmFileName = paste(lmPlotsFolder,"LM_plot")
   lmFileName = paste(lmFileName,".jpg")
   jpeg(lmFileName)
@@ -138,7 +138,7 @@ final_AutoArima <- function(min_arima_index,trainData,testData,best5errors,file1
 	temp_high = as.numeric(temp_high$x)
 	temp_pred_arima = as.numeric(temp_pred_arima$x)
 	
-	lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Output_final\\"
+	lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Output_final\\"
 	lmFileName = paste(lmPlotsFolder,file1)
 	lmFileName = paste(lmFileName,".jpg")
 	totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
@@ -349,7 +349,7 @@ predict_lm <- function(trainData,testData,testvar)
   temp1 = as.data.frame(temp1)
   temp1 = fitLM
   
-  lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\LMplot\\"
+  lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\LMplot\\"
   lmFileName = paste(lmPlotsFolder,"LM_prediction_plot")
   lmFileName = paste(lmFileName,".jpg")
   jpeg(lmFileName)
@@ -448,6 +448,7 @@ final_HoltWinters  <- function(min_hw_index,trainData,testData,best5errors,file1
 	#best_period = 7
 	print(min_hw_index)
 	testData = as.data.frame(testData)
+    data1 = detrendedTrainData[,2]
     tsdataHW = ts(data1,frequency=best_period)
     hwObject = HoltWinters(tsdataHW)
     fcObject <- forecast(hwObject,h=length(testData[,2]),level=c(80,95))
@@ -460,7 +461,7 @@ final_HoltWinters  <- function(min_hw_index,trainData,testData,best5errors,file1
     pred_hw_lower = as.numeric(fcObject$lower)
     pred_hw_upper = as.numeric(fcObject$upper)
 	
-	lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Output_final\\"
+	lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Output_final\\"
 	lmFileName = paste(lmPlotsFolder,file1)
 	lmFileName = paste(lmFileName,".jpg")
 	totalLength = length(detrendedTrainData[,2]) + length(testData[,2])
@@ -488,6 +489,7 @@ apply_HoltWinters <- function(detrendedTrainData,best5errors,testData,output_dir
   if(best_period <= length(detrendedTrainData[,2])/2)
   {
     testData = as.data.frame(testData)
+    data1 = detrendedTrainData[,2]
     tsdataHW = ts(data1,frequency=best_period)
     hwObject = HoltWinters(tsdataHW)
     fcObject <- forecast(hwObject,h=length(testData[,2]),level=c(80,95))
@@ -730,7 +732,7 @@ final_compute_periodogram <- function(detrendedTrainData,testData,damp,granulari
   combined_lower = slope*gen_seq + combined_lower
   combined_higher = slope*gen_seq + combined_higher
 
-	lmPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Output_final\\"
+	lmPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Output_final\\"
 	lmFileName = paste(lmPlotsFolder,file1)
 	lmFileName = paste(lmFileName,".jpg")
 	
@@ -1048,7 +1050,7 @@ predict_next_bin_AR <- function(detrendedTrainData, period)
   }
   
   combined = c(detrendedTrainData[,2],predicted_bin)
-  predictedPlotsFolder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Predicted_plots_1\\"
+  predictedPlotsFolder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Predicted\\"
   lmFileName = paste(predictedPlotsFolder,"Prediction_with_period_AR")
   lmFileName = paste(lmFileName,top20periods[i])
     lmFileName = paste(lmFileName,".jpg")
@@ -1201,10 +1203,10 @@ manage_holes <- function(relevantData)
 
 
 
-fileNames = list.files(path = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\",pattern=".csv",full.names=TRUE)
+fileNames = list.files(path = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\datasets\\sanket",pattern=".csv",full.names=TRUE)
 temp_vec <- NULL
 col_names <- NULL
-for(file1 in 10:length(fileNames))
+for(file1 in 1:length(fileNames))
 { 
 	  print(fileNames[file1])
 	  # ----reads data from csv----
@@ -1240,10 +1242,10 @@ for(file1 in 10:length(fileNames))
 	  # ------ Detrend the data --------
 	  detrendedTrainData <- detrend(coeff,trainData)
 	  #------------ Set output Directory path ----------
-	  output_folder = "C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\"
+	  output_folder = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Outputs\\"
 	  subDirectory = paste("Output_",file1,sep="")
 	  dir.create(file.path(output_folder,subDirectory),showWarnings=FALSE)
-	  output_directory_path = paste("C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\Output_",file1,sep="")
+	  output_directory_path = paste("C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Outputs\\Output_",file1,sep="")
 	  output_directory_path = paste(output_directory_path,"\\",sep="")
 	  # --------- The periodogram approach, returns errors of this approach and the best 5 periods --------
 	  bestErrorIndexAnderror_list <- compute_periodogram(detrendedTrainData,testData,damp,granularity,coeff,output_directory_path,file1)
@@ -1355,7 +1357,7 @@ for(file1 in 10:length(fileNames))
 }
 colnames(temp_vec) <- col_names
 # write results to the output file
-write.table(temp_vec,"C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\Results\\results1.csv",append=FALSE,sep=",",col.names=TRUE,row.names = FALSE)
+write.table(temp_vec,"C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\Results\\results1.csv",append=FALSE,sep=",",col.names=TRUE,row.names = FALSE)
 #write.table(relevantData,"C:\\Users\\735201\\Desktop\\Sanketh-Test\\CPU_Util_data\\Input data\\Results\\temp.csv",append=FALSE,sep=",",col.names=TRUE,row.names = FALSE)
 
 
