@@ -1,7 +1,11 @@
 1. Clean up the code and make it standard.
 2. Make a report.
-3. Fix to a standard error measure. 
+3. Fix to a standard error measure. ###HIGH PRIORITY###
 
 Limitations of the code:
 1. Works only if it is 20 periods..the errors..
 2. The data should be in 2 and 3rd columns of a .csv file.
+
+Read this:
+
+http://www.maths.bath.ac.uk/~jjf23/papers/neural/nnts.pdf
