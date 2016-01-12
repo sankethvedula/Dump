@@ -1,0 +1,158 @@
+Problem definition:
+
+To automatically forecast given any time series.
+Generally Forecasting needs some human intervention to tune parameters, select a suitable model and periodicity of the data. The aim is to automate the
+whole procedure of forecasting by developing an algorithm which chooses the periodicity given the data and selects the suitable model for forecasting.
+
+Challenges:
+
+The algorithm which is to be developed has to be able to do the following tasks:
+
+1. Given the data, calculating the periodicity or seasonality in the data(if any).
+2. Developing an algorithm for forecasting.  
+3. For the given time series, selecting a suitable model to forecast from 
+	1. ARIMA
+	2. Holt Winters
+	3. Exponential Smoothing State Space model
+	4. Neural Networks based forecasting
+	5. The custom algorithm
+4. Self learning :
+		The algorithm should finally be able to self learn, adapt and update the model as the data increases.
+
+		
+Key Idea:
+
+1. Calculating the periodicity of the data based on the periodogram.
+	
+Auto-Correlation Function Plot (ACF):
+The ACF gives a plot of the correlations of the given time series vs (lag-t) of the same time series which would give a peak if there is a strong
+correlation between the time series and any lag of it. If the time series is seasonal there would be peaks at regular intervals of that period. 
+All these are difficult to interpret as the plots are in time-domain.
+
+Periodogram:
+Periodogram is a plot of spectral density vs frequency.
+If we convert the ACF plot to frequency domain. It is easy to detect and interpret the peaks. The peaks mean that there is high spectral density at that
+frequency which means there is high correlation between the given time series and the lag-t of the series where t is the corresponding time for that frequency
+which has a high spectral density(i.e a peak) in the periodogram plot.
+
+2. Hence, we get the suitable period of the time series from the periodogram.
+
+
+3. Custom Algorithm:
+
+	1. Calculate the granularity of the data.
+	2. Fill the missing values in the data
+		1. By averaging the values if there are more than one value for a given granularity.
+		2. If there is a missing value for a particular time stamp replace it by taking the average of the previous and the next day. 
+	3. Extract the top 20 peaks from the periodogram plot.
+		## Thresholds are chosen while selecting the top 20 peaks depending on the granularity of the data. ##
+	4. For each period:
+		1. Divide the data into training and test data.
+		2. Depending on the period, divide the train data into bins each of the size of given period.
+		3. Predict the next bin by taking the median of the corresponding value in the bins of the test data.
+			i.e ith value in the predicted bin is calculated by taking the median of all the bins in training data.
+		4. Calculate the standard deviation for each value in bin using only the corresponding values in the previous bins.
+		5. Upper band is predicted value + standard deviation and lower band is predicted value - standard deviation
+		6. Repeat the prediction till there are as many values as there are in the test data.
+		7. Calculate the error (Adjusted MAPE) using the predicted values and the test data.
+	5. The period which has least error is selected to be the best by the custom algorithm.
+
+	Adjusted MAPE:
+
+		If there is predicted data and test data. Adjusted MAPE is defined as,
+		
+		NUMERATOR: absolute(testdata - predictedData)
+		DENOMINATOR: absolute(testData + predictedData)
+		
+		Adjusted MAPE = NUMERATOR/DENOMINATOR.
+		
+		This error measure is chosen because MAPE does not perform well if the actual value is less and the predicted value is more. 
+		MAPE is biased towards lower values of actual data. By adding the predicted data in the denominator that affect can be cancelled.
+
+
+State-Of-the-art approaches:
+
+Some significant thoughts and findings on each model.
+
+1. ARIMA:
+	ARIMA is a universal approximator. Whatever might be the actual underlying model behind the data, an ARIMA model can be used to fit that data.
+	One doesn't need to care what the true model behind the data. A universal ARIMA diagnositc and fitting tools is used to approximate this model.
+	It's like polynomial curve fitting. One doesn't need to care about what the true function is. It can always be approximated to a polynomial of some
+	degree.
+	
+	It works well only for short term predictions.
+	
+	It doesn't work well if the trend, seasonality and error are not additively related.
+	
+2. Holt-Winters:
+
+	This is also one of the variations of Exponential Smoothing state space model.
+	
+	-> Doesn't work if there is no periodicity in the data. -> throws an error. 
+	
+
+3. Exponential Smoothing state space model:
+	
+	One current assumption being taken is that the trend, seasonality and error in a time series are additive. 
+	
+	Advantages:
+	1. It can perform well even if the trend,seasonality and error are multiplicative or in any configuration.
+	2. As there is a great variety of state space models formulations -> it is more richer than ARIMA.
+	3. Kalman filter can be used to estimate the configuration of the state space model. 
+		i.e It can exactly and directly model complex and non-linear models.
+	4. Any ARIMA model can be represented in a state-space form, but only simple state-space models can be represented exactly in ARIMA form.
+	5. Handles missing data very efficiently.
+	6. It can be used in self learning. It can update the state-space configuration dynamically.
+	
+	
+Reference: http://stats.stackexchange.com/questions/78287/what-are-disadvantages-of-state-space-models-and-kalman-filter-for-time-series-m
+
+	My thoughts:
+		-> Looks to be a vast field, doesn't have good community or software support but, theoretically it is supposed to be very adaptive and robust and 
+		   should be able to forecast for any time series with good accuracy.
+		-> Interesting field to explore more.
+
+4. Neural Networks:
+	It just trains a neural network of following architecture is used: 
+		Input Layer: Number of nodes = Period size.
+		Hidden Layer: Number of nodes = half the period size.
+		Output Layer: One node.
+	
+	Advantages: 
+	1. The performance gets better and better as the size of the data set increases.
+	2. As the optimization method used is stochastic gradient descent, the weights of the edges between the layers can be updated as the new data comes.
+	   There is no need to estimate the edge weights again for all the edges using the previous data. The weights can just be updated. Hence, it is more 
+	   suitable for self learning.
+
+	   
+Solution Approach:
+
+Algo of Algos:
+
+	1. Extract the top 5 periods from the periodogram.
+	2. Apply :
+		1. Holt-Winters
+		2. ARIMA
+		3. Exponential Smoothing State space model
+		4. Neural Networks
+		5. Custom Algorithm
+	3. Select the best method using Adjusted MAPE.
+
+MAPE, MdAPE (Median of Absolute Percentage Errors), Adjusted MAPE, RMSE have been explored.
+Adjusted MAPE is observed to do well. 
+
+Next Steps:
+
+	1. Self Learning module.
+		A crude way:
+			One way to do self learning is to run the Algo of Algos regularly as the data keeps coming. This will be updating the whole model regularly.
+		Or by neural nets:
+			If neural nets are used edge weights in the neural nets can be updated as the new data comes.
+		
+		Disadvantages due this crude method:
+			These above methods are as good as having more data. It doesn't learn anything from the errors.
+		
+	2. To build the self learning module it is important to have good understanding on State space model, so that the state space model can be dynamically
+	   dynamically updated and can be made adaptive. (Understanding of Kalman filter and state space models is crucial)
+	3. Holt-Winters and ARIMA are very restrained with the parameters. 
+	4. Broadly, understand the mathematics of each method and generate what to  use when.
