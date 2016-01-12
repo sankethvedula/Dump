@@ -117,7 +117,7 @@ final_AutoArima <- function(min_arima_index,trainData,testData,best5errors,file1
 	data1 = detrendedTrainData[,2]
 	tsdata1 = ts(data1,frequency=best_period)
 	library(forecast)
-	fit_auto_arima <- auto.arima(tsdata1)
+	fit_auto_arima <- auto.arima(tsdata1,seasonal=TRUE)
 	testData = as.data.frame(testData)
 	len = length(testData[,2])
 	fc <- try(predict(fit_auto_arima,n.ahead=len), silent = TRUE)
@@ -163,7 +163,7 @@ apply_AutoArima <- function(detrendedTrainData,best5errors,testData,output_direc
   data1 = detrendedTrainData[,2]
   tsdata1 = ts(data1,frequency=best_period)
   library(forecast)
-  fit_auto_arima <- auto.arima(tsdata1)
+  fit_auto_arima <- auto.arima(tsdata1,seasonal=TRUE)
   actual_data_arima <- fit_auto_arima$x
   predicted_data_arima <- fitted(fit_auto_arima)
   actual_data_arima <- as.data.frame(actual_data_arima)
@@ -397,7 +397,7 @@ final_nnets <- function(min_nnet_index,trainData,testData,best5errors,file1)
 	testData = as.data.frame(testData)
     data1 = detrendedTrainData[,2]
     tsdataHW = ts(data1,frequency=best_period)
-    nnetObj = nnetar(tsdataHW)
+    nnetObj = nnetar(tsdataHW,size=10)
     fcObject <- forecast(nnetObj,h=length(testData[,2]),level=c(80,95))
     pred_nnet <- fcObject$mean
     pred_nnet_upper_80 <- fcObject$upper[,1]
@@ -577,7 +577,14 @@ apply_nnets <- function(detrendedTrainData,best5errors,testData,output_directory
     testData = as.data.frame(testData)
     data1 = detrendedTrainData[,2]
     tsdataHW = ts(data1,frequency=best_period)
-    nnetObj = nnetar(tsdataHW)
+    err_model = try((nnetObj = nnetar(tsdataHW,size=10)),silent=TRUE)
+    if(inherits(err_model, 'try-error'))
+    {
+    message_string = paste('Error in predicting')
+    print(message_string)
+    error_nnet_list <- c(error_nnet_list,"NA")
+    next
+    }
     fcObject <- forecast(nnetObj,h=length(testData[,2]),level=c(80,95))
     pred_nnet <- fcObject$mean
     pred_nnet_upper_80 <- fcObject$upper[,1]
@@ -891,7 +898,8 @@ compute_periodogram <- function(detrendedTrainData,testData,damp,granularity,coe
   
   error_list <- predict_next_bin_detrended(top20periods,detrendedTrainData,testData,granularity,slope,output_directory_path,file1)
   errors_and_periods <- cbind(top20periods,error_list)
-  errors_and_periods  <- errors_and_periods[order(errors_and_periods[,2]),]
+  #errors_and_periods  <- errors_and_periods[order(errors_and_periods[,2]),]
+  errors_and_periods <- unique(errors_and_periods)
   best5errors <- errors_and_periods[1:5,]
   
   error_list <- as.data.frame(error_list)
@@ -939,15 +947,19 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,
   }else{
   folds = folds + 1
   }
+  partial_bin <- NULL
   for(k in 1: length(temp[,1]))
   {
   if(temp[k,folds]==0.000000)
   {
     
     var1 = quantile(temp[k,], probs = c(0, 0.25, 0.5, 0.75, 1)) # quartile
-      pred_temp = as.numeric(var1[3])
-   
+    pred_temp = as.numeric(var1[3])   
     predicted_bin[k] = pred_temp
+    temp[k,folds] = pred_temp
+    #print(k)
+    #print(pred_temp)
+    partial_bin <- c(partial_bin,pred_temp)
   }
   
   var1 = quantile(temp[k,], probs = c(0, 0.25, 0.5, 0.75, 1)) # quartile
@@ -956,6 +968,10 @@ predict_next_bin_detrended <- function(top20periods,detrendedTrainData,testData,
   std_temp = sd(temp[k,],na.rm=TRUE)
   std_bin[k] = std_temp
   }
+
+  predicted_bin <- c(partial_bin,predicted_bin)
+  predicted_bin <- predicted_bin[1:length(temp[,1])]
+
   lower_band = predicted_bin-std_bin 
   upper_band = predicted_bin + std_bin
   
@@ -1289,7 +1305,7 @@ manage_holes <- function(relevantData)
 
 
 
-fileNames = list.files(path = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\coding\\Current\\datasets\\sanket",pattern=".csv",full.names=TRUE)
+fileNames = list.files(path = "C:\\Users\\SaiSakanki\\Desktop\\TRDDC stuff\\datasets\\sanket",pattern=".csv",full.names=TRUE)
 temp_vec <- NULL
 col_names <- NULL
 for(file1 in 1:length(fileNames))
@@ -1312,9 +1328,9 @@ for(file1 in 1:length(fileNames))
 	  #---- plot data -----
 	  plot_data(relevantData)
 	  #------manage holes----
-      if(granularity > 1000){
-		relevantData <- manage_holes(relevantData)
-	  }
+      #if(granularity > 1000){
+		#relevantData <- manage_holes(relevantData)
+	  #}
 	  #------ remove outliers from data -----------
 	  relevantData <- remove_outliers(relevantData)
 	  
