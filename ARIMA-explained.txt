@@ -1,0 +1,65 @@
+ARIMA - Auto Regression Integrated Moving Average
+
+Notation:
+Forecasted value of time t : Y_hat_t 
+Actual Value of time t : Y_t
+
+In ARIMA, 
+Number of terms used for Auto regression -> p
+Number of terms used for Moving Average -> q
+Number of times differencing is done -> d
+
+What does Auto Regression do? (AR term)
+Forecast the value at time t is represented as a linear combination of previous "p" observations. P value determines how many previous actual values we are going to consider.
+
+If p = 2
+Y_hat_t = $phi_1$*(Y_t-1) + $phi_2$*(Y_t-2)
+ 
+In the above case, the forecasted value is the linear combination of the previous two actual values.
+
+The p value as far as I understand, depends on the window size of the season. -> the period size. But, all the sources that I found are generally not considering p to be more than 5.
+the function arima() -> throws an error when p is kind of big.(say, if p = 20)
+
+Generally, when the period is high, it doesn't make sense in taking only one previous value for prediction. However, I think this can be balanced by taking sufficient number of Moving average.
+
+What does moving average do? (the MA term)
+
+Forecasted value at time t is represented as a linear combination of the errors in prediction of the previous "q" terms. -> it looks like we are considering only the previous q errors but we are giving more importance to the previous "q" terms. The rest of the errors are also taken into consideration but they get damped coefficients. 
+
+Notation: 
+Error at a time t -> e_t = Y_hat_t - Y_t
+
+For example,
+if q = 1
+
+Y_hat = -$theta_t$*(e_t-1) + constant(optional) {{See the negative sign before e_t-1}}
+$theta_t$ -> $1-alpha$
+
+Here if we can see $e_t-1$ can be calculated only when we know $y_hat_t-1$ which in turn requires $e_t-2$ -> Hence the damping of the previous errors.
+Hence, if we want our previous "q" errors to matter more than what they usually do (when damped) we increase the q value.
+
+This is what I think Holt Winters Exponential Smoothing exactly does. ^So, if we use ARIMA with all the parameters (p,d) -> 0 except q. It performs the same as what HoltWinters does.
+Increasing q value decreases the error because we are considering more and more previous errors which is always good.
+
+What does the d value do?
+If any trend is left out in our series, i.e if the series is not stationary changing d value helps.
+How do we know if any trend is left in the series?
+Check in ACF if there is 
+
+
+These are all just observations based on the plot. As far as what I read, there are some definite rules which can be formed from the ACF (Auto Correlation Function) and PACF plots. <- this would be necessary because we need these to differentiate between HoltWinters and ARIMA.
+
+
+I did the Random Noise (rather, Gaussian Noise) experiment. To fit Arima to a synthetic gaussian noise with some mean and standard deviation
+It fits to ARIMA(0,0,0) which makes sense because each observation in the noise is Independently Identically distributed So, the value can not be forecasted by some linear combination of previous values(p->0) and also it is not depending on the previous errors for the same reason as above. (so, q-> 0)
+
+
+So, the picking algo could be like:
+
+Once we get the timeseries -> Detrend the Time Series-> Fit Auto Arima -> if the coefficient is (p,q,d)->(0,0,0) This means there is no underlying seasonality so go with LM (that's the best that could be done, Here non linear regression can be explored) 
+
+By seeing ACF we could go picking the p,q values like, 
+
+1. See the ACF, if the ACF is high in the case of lag1 -> this means there is a lot of similarity between the current time series and one lag behind it. So prediction function has to learn from it. So, increase the "p" value 
+2. If the ACF with lag1 is negative -> the prediction should learn from the error of the forecasted value of lag1 -> so one MA term should be increased -> "q" value is increased.
+
