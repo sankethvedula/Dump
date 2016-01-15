@@ -1,0 +1,18 @@
+1. variable name in prepare data function would be more specific to data.
+2. for loop can be replace wwith which statement (line no. 14).
+3. testdata, testdata2 can be store in single matrix(2, 2), same for traindata, traindata2.
+4. calculate_errors_1 function name would be more specific.
+5. calculate_errors_1 -> for loop can be replace with which statement.
+5. calculate_errors_1 -> variable name RMSE, MAPE?
+6. folder path should not be inside function(line 77).
+7. fit_lm_plot function returns coef only what is the perpose of calculating RMSE ans MAPE then?
+8. folder path in code line 1369.
+9. line (1322 - 1503) code should be in in function.
+10. 849, 850, 852 you can use variable direct no need to explicitly assign in local variable.
+11. selecting best fit for given timesesies should be in function outside from for loop (it is generic to all timeseries).
+
+GENERAL:
+1. remove commented code from R file.
+2. missing necessary exception catch in code incase of output folder not found, unable to write csv, timeseries data has null or na or different date format then used.
+3. remove unnecessary print statement.
+4. not clear what is happening in predict_next_bin_detrended function.
